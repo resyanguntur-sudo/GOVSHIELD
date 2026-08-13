@@ -17,18 +17,18 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# 2. CONSTANTS
+# 2. CONSTANTS (single source of truth)
 # ---------------------------------------------------------
 MAX_PDF_MB = 15
 MAX_PDF_CHARS = 14000
 MAX_QUERY_CHARS = 6000
-MAX_CHAT_TURNS_SENT = 8
+MAX_CHAT_TURNS_SENT = 8   # Controlled context window for tab 3 chat safety
 REQUEST_TIMEOUT_SECS = 60
 MODEL_GROQ = "llama-3.3-70b-versatile"
 MODEL_OPENAI = "gpt-4o-mini"
 
 # ---------------------------------------------------------
-# 3. SECRETS & CLIENT CONFIG
+# 3. READ API KEYS & SECRETS
 # ---------------------------------------------------------
 try:
     GROQ_KEY = st.secrets["GROQ_API_KEY"]
@@ -42,6 +42,7 @@ except Exception as e:
 
 
 def sanitize_error(exc: Exception) -> str:
+    """Never leak the raw API key or overly long stack details to the UI."""
     msg = str(exc)
     if GROQ_KEY and GROQ_KEY in msg:
         msg = msg.replace(GROQ_KEY, "***")
@@ -51,11 +52,46 @@ def sanitize_error(exc: Exception) -> str:
 
 
 def get_model_name(base_url: str) -> str:
+    """Single source of truth for model selection."""
     return MODEL_GROQ if "groq" in base_url.lower() else MODEL_OPENAI
 
 
+def safe_llm_call(client: OpenAI, model: str, messages: list, **kwargs):
+    """
+    Wraps chat.completions.create with full error handling.
+    Returns (success: bool, content_or_error: str) — never raises.
+    """
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            **kwargs,
+        )
+        if not response or not response.choices:
+            return False, "The model returned an empty response. Please try again."
+        content = response.choices[0].message.content
+        if not content or not content.strip():
+            return False, "The model returned an empty answer. Please try again."
+        return True, content
+    except Exception as e:
+        return False, sanitize_error(e)
+
+
+def render_card(variant: str, title: str, icon: str, body_html: str) -> None:
+    """variant: 'gold' or 'cyan' — removes the duplicated card markup blocks."""
+    card_class = "lexis-card-gold" if variant == "gold" else "lexis-card-cyan"
+    title_class = "card-title-gold" if variant == "gold" else "card-title-cyan"
+    st.markdown(
+        f"""<div class="{card_class}">
+<div class="{title_class}">{icon} {title}</div>
+<div style="font-size:0.95rem; line-height:1.6; color:#F1F5F9;">{body_html}</div>
+</div>""",
+        unsafe_allow_html=True,
+    )
+
+
 # ---------------------------------------------------------
-# 4. CUSTOM CSS STYLES
+# 4. UNIVERSAL THEME STYLES
 # ---------------------------------------------------------
 st.markdown("""<style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -154,6 +190,18 @@ section[data-testid="stSidebar"] * {
     white-space: nowrap;
 }
 
+.custom-label {
+    font-size: 0.88rem !important;
+    font-weight: 800 !important;
+    color: #38BDF8 !important;
+    letter-spacing: 0.8px !important;
+    text-transform: uppercase;
+    margin-bottom: 8px !important;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 textarea {
     background-color: #0A142F !important;
     color: #FFFFFF !important;
@@ -163,6 +211,7 @@ textarea {
     border-radius: 12px !important;
     padding: 14px !important;
     box-shadow: 0 0 15px rgba(56, 189, 248, 0.25) !important;
+    transition: all 0.2s ease !important;
 }
 textarea:focus {
     border-color: #FDE047 !important;
@@ -301,7 +350,7 @@ st.markdown("""<div class="floating-topleft-badge">
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 5. HEADER
+# 5. HEADER TASKBAR
 # ---------------------------------------------------------
 st.markdown("""<div class="header-container">
 <div style="display: flex; align-items: center; gap: 16px;">
@@ -319,7 +368,7 @@ st.markdown("""<div class="header-container">
 <div class="letterhead-divider"><span class="lh-line"></span></div>""", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 6. GROUNDED KNOWLEDGE BASE
+# 6. BUILT-IN GROUNDED KNOWLEDGE BASE
 # ---------------------------------------------------------
 BUILTIN_KNOWLEDGE_BASE = """
 [BUILT-IN GROUNDED KNOWLEDGE BASE: CONSTITUTION & LEGAL HIERARCHY]
@@ -335,7 +384,7 @@ BUILTIN_KNOWLEDGE_BASE = """
 """
 
 # ---------------------------------------------------------
-# 7. INITIALIZE SESSION STATE
+# 7. SESSION STATE INITIALIZATION
 # ---------------------------------------------------------
 _defaults = {
     "pdf_text": "",
@@ -352,7 +401,7 @@ for _k, _v in _defaults.items():
         st.session_state[_k] = _v
 
 # ---------------------------------------------------------
-# 8. SIDEBAR
+# 8. SIDEBAR CONFIGURATION
 # ---------------------------------------------------------
 with st.sidebar:
     st.markdown("""<div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; padding: 12px; border-radius: 10px; margin-bottom: 16px;">
@@ -379,13 +428,14 @@ with st.sidebar:
         st.session_state["analysis_result"] = None
         st.session_state["chat_history"] = []
         st.session_state["robot_dismissed"] = False
+        # Increment uploader_key to clear both File Uploader and Text Area
         st.session_state["uploader_key"] += 1
         st.rerun()
 
     st.caption("🛡️ **GovShield Intelligence Engine v3.1**")
 
 # ---------------------------------------------------------
-# 9. WELCOME OVERLAY
+# 9. ROBOT WELCOME OVERLAY
 # ---------------------------------------------------------
 if not st.session_state["robot_dismissed"]:
     st.markdown("""
@@ -402,7 +452,7 @@ if not st.session_state["robot_dismissed"]:
         st.rerun()
 
 # ---------------------------------------------------------
-# 10. FORM INPUTS
+# 10. INPUT AREA
 # ---------------------------------------------------------
 st.markdown(f"📄 **OPTIONAL: SPECIFIC POLICY / PDF DOCUMENT ATTACHMENT (max {MAX_PDF_MB}MB)**")
 
@@ -451,6 +501,7 @@ else:
 
 st.markdown("❓ **POLICY INQUIRY / CASE SCENARIO / LEGAL QUERY (REQUIRED)**")
 
+# BIND TEXT AREA TO SESSION STATE UPLOADER KEY FOR CLEAN RESET
 user_query = st.text_area(
     "Type your legal inquiry",
     placeholder="Type your policy scenario or regulatory questions here...",
@@ -466,7 +517,7 @@ _char_count = len(user_query)
 st.caption(f"{_char_count:,}/{MAX_QUERY_CHARS:,} characters")
 
 # ---------------------------------------------------------
-# 11. REASONING ENGINE EXECUTION
+# 11. EXECUTE BUTTON & AI REASONING LOGIC
 # ---------------------------------------------------------
 run_clicked = st.button("RUN GOVSHIELD LEGAL INTELLIGENCE ANALYSIS", disabled=st.session_state["processing"])
 
@@ -484,13 +535,13 @@ if run_clicked:
             with st.spinner("Analyzing legal hierarchy & cross-referencing provisions..."):
                 combined_context = f"{BUILTIN_KNOWLEDGE_BASE}\n[SELECTED REGULATORY SCOPE]: {reg_scope}\n"
 
-                # PARAGRAPH-SAFE TRUNCATION
+                # REFINED PARAGRAPH-AWARE TRUNCATION
                 if st.session_state["pdf_text"]:
                     pdf_full = st.session_state["pdf_text"]
                     if len(pdf_full) > MAX_PDF_CHARS:
                         truncated_text = pdf_full[:MAX_PDF_CHARS].rsplit('\n', 1)[0]
                         combined_context += f"\n[ATTACHED USER DOCUMENT / PDF]:\n{truncated_text}\n"
-                        st.info(f"ℹ️ Attached PDF truncated neatly at paragraph boundary ({len(truncated_text):,} chars).")
+                        st.info(f"ℹ️ Attached PDF was truncated neatly at paragraph boundary ({len(truncated_text):,} chars).")
                     else:
                         combined_context += f"\n[ATTACHED USER DOCUMENT / PDF]:\n{pdf_full}\n"
 
@@ -530,11 +581,13 @@ OUTPUT FORMAT (JSON ONLY):
 """
 
                 user_prompt = f"GROUNDED KNOWLEDGE & DOCUMENTS:\n---\n{combined_context}\n---\nINQUIRY:\n{query_clean}"
-                model_name = get_model_name(BASE_URL)
 
-                response = client.chat.completions.create(
-                    model=model_name,
-                    messages=[
+                model_name = get_model_name(BASE_URL)
+                # UPGRADED TEMPERATURE TO 0.1 FOR STABLE JSON GENERATION
+                success, content = safe_llm_call(
+                    client,
+                    model_name,
+                    [
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},
                     ],
@@ -542,20 +595,20 @@ OUTPUT FORMAT (JSON ONLY):
                     response_format={"type": "json_object"},
                 )
 
-                if response and response.choices and response.choices[0].message.content:
-                    content = response.choices[0].message.content
-                    st.session_state["analysis_result"] = json.loads(content)
+                if not success:
+                    st.error(f"❌ Analysis failed: {content}")
                 else:
-                    st.error("❌ Model returned an empty analysis.")
-        except json.JSONDecodeError:
-            st.error("❌ Invalid JSON response format from AI.")
+                    try:
+                        st.session_state["analysis_result"] = json.loads(content)
+                    except json.JSONDecodeError:
+                        st.error("❌ Invalid JSON format returned by AI. Please retry.")
         except Exception as e:
             st.error(f"❌ Technical error: {sanitize_error(e)}")
         finally:
             st.session_state["processing"] = False
 
 # ---------------------------------------------------------
-# 12. RESULTS WORKSPACE
+# 12. OUTPUT DASHBOARD & WORKSPACE
 # ---------------------------------------------------------
 if st.session_state["analysis_result"]:
     result = st.session_state["analysis_result"]
@@ -593,45 +646,19 @@ if st.session_state["analysis_result"]:
     with tab1:
         r_col1, r_col2 = st.columns(2, gap="medium")
         with r_col1:
-            st.markdown(f"""
-            <div class="lexis-card-gold">
-                <div class="card-title-gold">⚖️ GOVERNING / APPLICABLE RULE</div>
-                <div style="font-size:0.95rem; line-height:1.6; color:#F1F5F9;">{applicable_rule}</div>
-            </div>
-            """, unsafe_allow_html=True)
+            render_card("gold", "GOVERNING / APPLICABLE RULE", "⚖️", applicable_rule)
         with r_col2:
-            st.markdown(f"""
-            <div class="lexis-card-cyan">
-                <div class="card-title-cyan">📌 CITATION & DIRECT LEGAL EVIDENCE EXCERPT</div>
-                <div style="font-size:0.95rem; line-height:1.6; color:#F1F5F9;">{evidence_text}</div>
-            </div>
-            """, unsafe_allow_html=True)
+            render_card("cyan", "CITATION & DIRECT LEGAL EVIDENCE EXCERPT", "📌", evidence_text)
 
     with tab2:
         exc_str = 'YES' if ra.get('exception_detected') else 'NO'
         conf_str = 'YES' if ra.get('unresolved_conflict') else 'NO'
 
-        st.markdown(f"""
-        <div class="lexis-card-cyan">
-            <div class="card-title-cyan">📊 REGULATORY HIERARCHY & NORMA ANALYSIS</div>
-            <div style="font-size:0.95rem; line-height:1.6; color:#F1F5F9;">
-                <b>General Provision:</b> {gen_prov}<br>
-                <b>Specific Exception:</b> {spec_prov}<br>
-                <b>Exception Detected:</b> {exc_str}<br>
-                <b>Normative Conflict:</b> {conf_str}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        norma_body = f"<b>General Provision:</b> {gen_prov}<br><b>Specific Exception:</b> {spec_prov}<br><b>Exception Detected:</b> {exc_str}<br><b>Normative Conflict:</b> {conf_str}"
+        render_card("cyan", "REGULATORY HIERARCHY & NORMA ANALYSIS", "📊", norma_body)
 
-        st.markdown(f"""
-        <div class="lexis-card-gold">
-            <div class="card-title-gold">📝 DETAILED LEGAL RATIONALE & CONCLUSION</div>
-            <div style="font-size:0.95rem; line-height:1.6; color:#F1F5F9;">
-                {reasoning}<br><br>
-                💡 <b>Counsel Advisory Note:</b> {review_note}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        rationale_body = f"{reasoning}<br><br>💡 <b>Counsel Advisory Note:</b> {review_note}"
+        render_card("gold", "DETAILED LEGAL RATIONALE & CONCLUSION", "📝", rationale_body)
 
     with tab3:
         st.markdown("### 💬 Interactive Legal Q&A Assistant")
@@ -656,24 +683,23 @@ if st.session_state["analysis_result"]:
                             timeout=REQUEST_TIMEOUT_SECS,
                             max_retries=2,
                         )
-
-                        # TRIM HISTORIES FOR SAFETY
+                        # SANITIZED SYSTEM PROMPT WITH TRIMMED HISTORY
                         followup_messages = [
                             {"role": "system", "content": f"You are GovShield AI Legal Assistant. Answer strictly based on this context: {json.dumps(result)}"},
                         ] + st.session_state["chat_history"][-MAX_CHAT_TURNS_SENT:]
 
-                        chat_res = chat_client.chat.completions.create(
-                            model=get_model_name(BASE_URL),
-                            messages=followup_messages,
+                        chat_success, chat_answer = safe_llm_call(
+                            chat_client,
+                            get_model_name(BASE_URL),
+                            followup_messages,
                             temperature=0.1,
                         )
 
-                        if chat_res and chat_res.choices and chat_res.choices[0].message.content:
-                            chat_ans = chat_res.choices[0].message.content
-                            st.markdown(chat_ans)
-                            st.session_state["chat_history"].append({"role": "assistant", "content": chat_ans})
+                        if chat_success:
+                            st.markdown(chat_answer)
+                            st.session_state["chat_history"].append({"role": "assistant", "content": chat_answer})
                         else:
-                            st.error("❌ Empty response received from assistant.")
+                            st.error(f"❌ {chat_answer}")
                     except Exception as err:
                         st.error(f"❌ Chat error: {sanitize_error(err)}")
 
