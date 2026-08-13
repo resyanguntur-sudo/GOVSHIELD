@@ -1,7 +1,5 @@
 import html
 import json
-from datetime import datetime
-
 import streamlit as st
 from openai import OpenAI
 from pypdf import PdfReader
@@ -17,18 +15,7 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# 2. CONSTANTS (single source of truth)
-# ---------------------------------------------------------
-MAX_PDF_MB = 15
-MAX_PDF_CHARS = 14000
-MAX_QUERY_CHARS = 6000
-MAX_CHAT_TURNS_SENT = 8   # Controlled context window for tab 3 chat safety
-REQUEST_TIMEOUT_SECS = 60
-MODEL_GROQ = "llama-3.3-70b-versatile"
-MODEL_OPENAI = "gpt-4o-mini"
-
-# ---------------------------------------------------------
-# 3. READ API KEYS & SECRETS
+# 2. READ API KEYS & SECRETS
 # ---------------------------------------------------------
 try:
     GROQ_KEY = st.secrets["GROQ_API_KEY"]
@@ -40,80 +27,28 @@ except Exception as e:
     st.error(f"❌ Error reading secrets.toml: {e}")
     st.stop()
 
-
-def sanitize_error(exc: Exception) -> str:
-    """Never leak the raw API key or overly long stack details to the UI."""
-    msg = str(exc)
-    if GROQ_KEY and GROQ_KEY in msg:
-        msg = msg.replace(GROQ_KEY, "***")
-    if len(msg) > 320:
-        msg = msg[:320] + "…"
-    return msg
-
-
-def get_model_name(base_url: str) -> str:
-    """Single source of truth for model selection."""
-    return MODEL_GROQ if "groq" in base_url.lower() else MODEL_OPENAI
-
-
-def safe_llm_call(client: OpenAI, model: str, messages: list, **kwargs):
-    """
-    Wraps chat.completions.create with full error handling.
-    Returns (success: bool, content_or_error: str) — never raises.
-    """
-    try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            **kwargs,
-        )
-        if not response or not response.choices:
-            return False, "The model returned an empty response. Please try again."
-        content = response.choices[0].message.content
-        if not content or not content.strip():
-            return False, "The model returned an empty answer. Please try again."
-        return True, content
-    except Exception as e:
-        return False, sanitize_error(e)
-
-
-def render_card(variant: str, title: str, icon: str, body_html: str) -> None:
-    """variant: 'gold' or 'cyan' — removes the duplicated card markup blocks."""
-    card_class = "lexis-card-gold" if variant == "gold" else "lexis-card-cyan"
-    title_class = "card-title-gold" if variant == "gold" else "card-title-cyan"
-    st.markdown(
-        f"""<div class="{card_class}">
-<div class="{title_class}">{icon} {title}</div>
-<div style="font-size:0.95rem; line-height:1.6; color:#F1F5F9;">{body_html}</div>
-</div>""",
-        unsafe_allow_html=True,
-    )
-
-
 # ---------------------------------------------------------
-# 4. UNIVERSAL THEME STYLES
+# 3. UNIVERSAL THEME STYLES (ENTERPRISE DARK THEME + UI FIXES)
 # ---------------------------------------------------------
 st.markdown("""<style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
-html { scroll-behavior: smooth; }
-
+/* HEADER & SIDEBAR NAVIGATION BUTTONS */
 header[data-testid="stHeader"] {
     background: transparent !important;
     z-index: 99999 !important;
 }
 
-button[data-testid="stSidebarCollapseButton"],
+button[data-testid="stSidebarCollapseButton"], 
 button[data-testid="baseButton-headerNoPadding"] {
     background-color: rgba(10, 20, 47, 0.9) !important;
     border: 1px solid rgba(234, 179, 8, 0.6) !important;
     color: #FDE047 !important;
     border-radius: 8px !important;
     box-shadow: 0 0 12px rgba(234, 179, 8, 0.25) !important;
-    transition: all 0.2s ease !important;
 }
 
-button[data-testid="stSidebarCollapseButton"]:hover,
+button[data-testid="stSidebarCollapseButton"]:hover, 
 button[data-testid="baseButton-headerNoPadding"]:hover {
     border-color: #38BDF8 !important;
     background-color: #0D1B3E !important;
@@ -129,9 +64,10 @@ button[data-testid="baseButton-headerNoPadding"]:hover {
     z-index: 2;
 }
 
+/* BASE BACKGROUND WITH LEGAL SILHOUETTE & TECH GLOW */
 .stApp {
     background-color: #040711 !important;
-    background-image:
+    background-image: 
         url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 24 24" fill="none" stroke="rgba(234,179,8,0.035)" stroke-width="0.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M19 7l2 8H17l2-8z"/><path d="M5 7l2 8H3l2-8z"/><path d="M9 21h6"/><path d="M4 21h16"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>'),
         radial-gradient(circle at 12% -8%, rgba(234, 179, 8, 0.16) 0%, transparent 40%),
         radial-gradient(circle at 108% 6%, rgba(56, 189, 248, 0.18) 0%, transparent 45%),
@@ -142,14 +78,58 @@ button[data-testid="baseButton-headerNoPadding"]:hover {
     background-attachment: fixed !important;
 }
 
+/* SIDEBAR STYLING */
 section[data-testid="stSidebar"] {
     background-color: #0A1228 !important;
     border-right: 1px solid rgba(56, 189, 248, 0.25) !important;
 }
+
 section[data-testid="stSidebar"] * {
     color: #F1F5F9 !important;
 }
 
+/* Fix Streamlit standard form labels high contrast */
+div[data-testid="stWidgetLabel"] label, 
+div[data-testid="stWidgetLabel"] p {
+    color: #38BDF8 !important;
+    font-weight: 700 !important;
+    font-size: 0.9rem !important;
+    letter-spacing: 0.5px;
+}
+
+/* ---------------------------------------------------------
+   PERBAIKAN CSS DROPDOWN & SELECTBOX (CONTRAST FIX)
+   --------------------------------------------------------- */
+div[data-baseweb="select"] > div {
+    background-color: #0F172A !important;
+    border: 1.5px solid #38BDF8 !important;
+    border-radius: 10px !important;
+    color: #F8FAFC !important;
+}
+
+div[data-baseweb="select"] * {
+    color: #F8FAFC !important;
+    background-color: transparent !important;
+}
+
+/* Dropdown Menu Popup List */
+ul[data-testid="stSelectboxVirtualDropdown"],
+div[data-baseweb="popover"] div {
+    background-color: #0F172A !important;
+    border: 1px solid #38BDF8 !important;
+}
+
+li[role="option"] {
+    background-color: #0F172A !important;
+    color: #F8FAFC !important;
+}
+
+li[role="option"]:hover, li[aria-selected="true"] {
+    background-color: #1E293B !important;
+    color: #FDE047 !important;
+}
+
+/* FLOATING TOP-LEFT BADGE */
 .floating-topleft-badge {
     position: fixed;
     top: 50px;
@@ -174,6 +154,7 @@ section[data-testid="stSidebar"] * {
     flex-shrink: 0;
     box-shadow: 0 0 10px rgba(234,179,8,0.5);
 }
+.floating-topleft-badge .fb-text { line-height: 1.15; }
 .floating-topleft-badge .fb-name {
     font-family: 'Playfair Display', serif;
     font-weight: 700;
@@ -190,6 +171,7 @@ section[data-testid="stSidebar"] * {
     white-space: nowrap;
 }
 
+/* HIGH CONTRAST CUSTOM LABELS */
 .custom-label {
     font-size: 0.88rem !important;
     font-weight: 800 !important;
@@ -200,6 +182,7 @@ section[data-testid="stSidebar"] * {
     display: flex;
     align-items: center;
     gap: 8px;
+    text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
 }
 
 textarea {
@@ -211,12 +194,24 @@ textarea {
     border-radius: 12px !important;
     padding: 14px !important;
     box-shadow: 0 0 15px rgba(56, 189, 248, 0.25) !important;
-    transition: all 0.2s ease !important;
 }
+
 textarea:focus {
     border-color: #FDE047 !important;
     box-shadow: 0 0 22px rgba(253, 224, 71, 0.4) !important;
     background-color: #0D1B3E !important;
+}
+
+textarea::placeholder {
+    color: #94A3B8 !important;
+    opacity: 1 !important;
+}
+
+section[data-testid="stFileUploader"] {
+    background-color: rgba(10, 20, 47, 0.8) !important;
+    border: 1.5px solid #EAB308 !important;
+    border-radius: 12px !important;
+    padding: 6px 12px !important;
 }
 
 .header-container {
@@ -227,6 +222,7 @@ textarea:focus {
     gap: 16px;
     padding: 0 0 12px 0;
     width: 100%;
+    position: relative;
 }
 
 .gold-shield-logo {
@@ -237,19 +233,36 @@ textarea:focus {
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 20px rgba(234, 179, 8, 0.4);
+    box-shadow: 0 0 20px rgba(234, 179, 8, 0.4), inset 0 0 10px rgba(254, 224, 71, 0.2);
+    position: relative;
 }
 
 .lexis-title {
     font-family: 'Playfair Display', serif;
-    font-size: clamp(1.4rem, 4.2vw, 2.4rem);
+    font-size: clamp(1.6rem, 4.2vw, 2.4rem);
     font-weight: 800;
     letter-spacing: 1px;
     background: linear-gradient(120deg, #FFFFFF 0%, #FDE047 42%, #EAB308 55%, #FFFFFF 100%);
+    background-size: 220% auto;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     margin: 0;
     text-transform: uppercase;
+}
+
+.lexis-subtitle {
+    font-size: 0.85rem;
+    color: #CBD5E1 !important;
+    font-weight: 500;
+}
+
+.lexis-maxim {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 0.72rem;
+    color: #FDE047 !important;
+    opacity: 0.9;
+    margin-top: 3px;
 }
 
 .top-right-badge {
@@ -258,15 +271,28 @@ textarea:focus {
     border-radius: 10px;
     padding: 8px 16px;
     text-align: right;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);
 }
-.top-right-badge .brand-name { font-size: 0.95rem; font-weight: 800; color: #FDE047 !important; }
-.top-right-badge .brand-desc { font-size: 0.75rem; color: #38BDF8 !important; font-weight: 600; }
+.top-right-badge .brand-name {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #FDE047 !important;
+}
+.top-right-badge .brand-desc {
+    font-size: 0.75rem;
+    color: #38BDF8 !important;
+    font-weight: 600;
+}
 
 .letterhead-divider {
-    display: flex; align-items: center; gap: 14px; margin: 6px 0 22px 0;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 6px 0 22px 0;
 }
 .letterhead-divider .lh-line {
-    flex: 1; height: 1px;
+    flex: 1;
+    height: 1px;
     background: linear-gradient(90deg, transparent, rgba(234, 179, 8, 0.75), rgba(56, 189, 248, 0.6), transparent);
 }
 
@@ -288,18 +314,23 @@ div.stButton > button {
     width: 100% !important;
     text-transform: uppercase;
 }
-div.stButton > button:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 26px rgba(56, 189, 248, 0.55) !important;
-    border-color: #FDE047 !important;
+
+.ai-search-frame {
+    background: rgba(10, 20, 47, 0.65);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 14px;
+    padding: 14px 18px;
+    margin-bottom: 8px;
 }
 
-.stDownloadButton > button {
-    background: linear-gradient(135deg, #EAB308 0%, #CA8A04 100%) !important;
-    color: #0A1228 !important;
-    font-weight: 800 !important;
-    border: none !important;
-    border-radius: 10px !important;
+.pulse-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #34D399;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #34D399;
+    display: inline-block;
+    margin-right: 6px;
 }
 
 .lexis-card-cyan {
@@ -320,28 +351,81 @@ div.stButton > button:hover:not(:disabled) {
     color: #F1F5F9 !important;
 }
 
-.card-title-cyan { font-size: 0.85rem; font-weight: 800; color: #38BDF8 !important; margin-bottom: 10px; }
-.card-title-gold { font-size: 0.85rem; font-weight: 800; color: #FDE047 !important; margin-bottom: 10px; }
+.card-title-cyan {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #38BDF8 !important;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
 
-.badge-supported { background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; color: #34D399 !important; padding: 14px 20px; border-radius: 10px; font-weight: 700; }
-.badge-review { background: rgba(234, 179, 8, 0.15); border: 1px solid #EAB308; color: #FDE047 !important; padding: 14px 20px; border-radius: 10px; font-weight: 700; }
-.badge-rejected { background: rgba(239, 68, 68, 0.15); border: 1px solid #EF4444; color: #F87171 !important; padding: 14px 20px; border-radius: 10px; font-weight: 700; }
+.card-title-gold {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #FDE047 !important;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
 
+.badge-supported {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid #10B981;
+    color: #34D399 !important;
+    padding: 14px 20px;
+    border-radius: 10px;
+    font-weight: 700;
+}
+.badge-review {
+    background: rgba(234, 179, 8, 0.15);
+    border: 1px solid #EAB308;
+    color: #FDE047 !important;
+    padding: 14px 20px;
+    border-radius: 10px;
+    font-weight: 700;
+}
+.badge-rejected {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid #EF4444;
+    color: #F87171 !important;
+    padding: 14px 20px;
+    border-radius: 10px;
+    font-weight: 700;
+}
+
+/* HIGH-TECH FUTURISTIC ROBOT WELCOME CARD */
 .robot-welcome-card {
     background: linear-gradient(135deg, rgba(10, 20, 47, 0.95) 0%, rgba(15, 28, 63, 0.95) 100%);
     border: 1.5px solid #FDE047;
     border-radius: 20px;
     padding: 30px;
     text-align: center;
-    box-shadow: 0 0 35px rgba(234, 179, 8, 0.25);
+    box-shadow: 0 0 35px rgba(234, 179, 8, 0.25), inset 0 0 15px rgba(56, 189, 248, 0.15);
     margin-bottom: 25px;
+}
+
+@keyframes floatRobot {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+    100% { transform: translateY(0px); }
+}
+
+.robot-avatar {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 15px auto;
+    animation: floatRobot 3.5s ease-in-out infinite;
+    filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.5));
 }
 </style>
 """, unsafe_allow_html=True)
 
-# FLOATING BADGE
+# FLOATING BADGE (TOP-LEFT)
 st.markdown("""<div class="floating-topleft-badge">
-    <div class="fb-icon">⚖️</div>
+    <div class="fb-icon">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0A1228" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2l7 4v6c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z"/>
+        </svg>
+    </div>
     <div class="fb-text">
         <div class="fb-name">GovShield AI</div>
         <div class="fb-desc">Evidence-First Legal Intelligence</div>
@@ -350,25 +434,47 @@ st.markdown("""<div class="floating-topleft-badge">
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 5. HEADER TASKBAR
+# 4. HEADER TASKBAR WITH GOLD SHIELD & MODERN SVG BADGE
 # ---------------------------------------------------------
 st.markdown("""<div class="header-container">
 <div style="display: flex; align-items: center; gap: 16px;">
-<div class="gold-shield-logo">⚖️</div>
+<div class="gold-shield-logo">
+<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 2L20 5V11C20 16.5 16.5 20.5 12 22C7.5 20.5 4 16.5 4 11V5L12 2Z" fill="url(#goldGrad)" stroke="#FDE047" stroke-width="1.5"/>
+  <path d="M12 6V16" stroke="#0A1228" stroke-width="1.8"/>
+  <path d="M8 9H16" stroke="#0A1228" stroke-width="1.8"/>
+  <path d="M8 9L6 13H10L8 9Z" fill="#0A1228"/>
+  <path d="M16 9L14 13H18L16 9Z" fill="#0A1228"/>
+  <path d="M9 16H15" stroke="#0A1228" stroke-width="1.8"/>
+  <defs>
+    <linearGradient id="goldGrad" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FDE047"/>
+      <stop offset="0.5" stop-color="#EAB308"/>
+      <stop offset="1" stop-color="#CA8A04"/>
+    </linearGradient>
+  </defs>
+</svg>
+</div>
 <div>
 <h1 class="lexis-title">GOVSHIELD AI</h1>
-<div style="color: #94A3B8; font-size: 0.85rem;">Evidence-First Legal &amp; Regulatory Intelligence Engine</div>
+<div class="lexis-subtitle">Evidence-First Legal &amp; Regulatory Intelligence Engine</div>
+<div class="lexis-maxim">"Fiat justitia ruat caelum" — Let justice be done though the heavens fall</div>
 </div>
 </div>
 <div class="top-right-badge">
-<div class="brand-name">🛡️ GOVSHIELD AI v3.1</div>
+<div class="brand-name">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FDE047" stroke-width="2.5" style="vertical-align:middle; margin-right:4px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    GOVSHIELD AI v3.0
+</div>
 <div class="brand-desc">Global Legal Analysis System</div>
 </div>
 </div>
-<div class="letterhead-divider"><span class="lh-line"></span></div>""", unsafe_allow_html=True)
+<div class="letterhead-divider">
+<span class="lh-line"></span>
+</div>""", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 6. BUILT-IN GROUNDED KNOWLEDGE BASE
+# 5. BUILT-IN GROUNDED KNOWLEDGE BASE (ENGLISH & INDONESIAN LAW)
 # ---------------------------------------------------------
 BUILTIN_KNOWLEDGE_BASE = """
 [BUILT-IN GROUNDED KNOWLEDGE BASE: CONSTITUTION & LEGAL HIERARCHY]
@@ -376,246 +482,262 @@ BUILTIN_KNOWLEDGE_BASE = """
    - Article 1 (3): Indonesia is a constitutional state governed by the rule of law.
    - Article 28D (1): Guarantee of fair legal certainty and equal treatment before the law.
    - Article 31: Human Rights & Right to Education.
+   - Public Policy & Governance Provisions.
 2. STATUTORY HIERARCHY (Act No. 12/2011 & Act No. 13/2022):
-   - 1945 Constitution (UUD 1945) > TAP MPR > Acts/Laws (UU) / Perppu > Government Regulations (PP) > Presidential Regulations (Perpres) > Regional Decrees.
+   - 1945 Constitution (UUD 1945) > People's Consultative Assembly Resolutions (TAP MPR) > Acts/Laws (UU) / Government Regulations in Lieu of Law (Perppu) > Government Regulations (PP) > Presidential Regulations (Perpres) > Provincial Decrees > Regency/City Regulations.
+   - Internal Policies / Institutional Regulations (Circular Letters, Rector/Dean Decrees): Operational rules that MUST NOT contradict superior statutory laws.
 3. FUNDAMENTAL LEGAL PRINCIPLES:
    - Lex Specialis Derogat Legi Generali: Specific laws override general laws.
    - Lex Superior Derogat Legi Inferiori: Higher ranking laws override lower ranking laws.
 """
 
 # ---------------------------------------------------------
-# 7. SESSION STATE INITIALIZATION
+# 6. SESSION STATE INITIALIZATION
 # ---------------------------------------------------------
-_defaults = {
-    "pdf_text": "",
-    "pdf_name": "",
-    "pdf_signature": "",
-    "robot_dismissed": False,
-    "analysis_result": None,
-    "chat_history": [],
-    "uploader_key": 0,
-    "processing": False,
-}
-for _k, _v in _defaults.items():
-    if _k not in st.session_state:
-        st.session_state[_k] = _v
+if "pdf_text" not in st.session_state:
+    st.session_state["pdf_text"] = ""
+if "pdf_name" not in st.session_state:
+    st.session_state["pdf_name"] = ""
+if "robot_dismissed" not in st.session_state:
+    st.session_state["robot_dismissed"] = False
+if "analysis_result" not in st.session_state:
+    st.session_state["analysis_result"] = None
+if "chat_history" not in st.session_state:
+    st.session_state["chat_history"] = []
 
 # ---------------------------------------------------------
-# 8. SIDEBAR CONFIGURATION
+# 7. SIDEBAR CONFIGURATION (MULTI-TIER SCOPE SELECTOR)
 # ---------------------------------------------------------
 with st.sidebar:
     st.markdown("""<div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; padding: 12px; border-radius: 10px; margin-bottom: 16px;">
-<b style="color:#34D399; font-size:0.88rem;">⚡ SECRETS CONNECTED</b><br>
+<b style="color:#34D399; font-size:0.88rem; display:flex; align-items:center; gap:6px;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    SECRETS CONNECTED
+</b>
 <span style="font-size:0.75rem; color:#94A3B8;">GROQ API Key Authenticated</span>
+</div>""", unsafe_allow_html=True)
+
+    st.markdown("""<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EAB308" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+<span style="font-weight:700; color:#EAB308; font-size:0.88rem;">REGULATORY SCOPE SELECTOR</span>
 </div>""", unsafe_allow_html=True)
 
     reg_scope = st.selectbox(
         "Choose Analysis Scope",
         [
-            "🏛️ Macro (National Level - UUD 1945 & Acts)",
-            "🎓 Meso (Institutional / Campus Policy)",
-            "⚖️ Harmonization (National vs Local Alignment)"
+            "National Level (UUD 1945 & Acts)",
+            "Institutional / Campus Policy",
+            "Harmonization (National vs Local Alignment)"
         ],
         index=2
     )
 
     st.markdown('<div class="lexis-divider"></div>', unsafe_allow_html=True)
 
-    if st.button("🗑️ RESET WORKSPACE DATA", disabled=st.session_state["processing"]):
+    st.markdown("""<div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+<span style="font-weight:700; color:#38BDF8; font-size:0.88rem;">GROUNDED INDEX ACTIVE</span>
+</div>""", unsafe_allow_html=True)
+
+    st.markdown("""<div style="background: #0A142F; border-left: 3px solid #10B981; padding: 10px; border-radius: 6px; margin-bottom: 8px; font-size: 0.85rem;">
+<b style="color:#FFFFFF;">§ 1945 Constitution (UUD)</b><br><span style="color:#94A3B8;">Amendments I-IV Indexed</span>
+</div>
+<div style="background: #0A142F; border-left: 3px solid #10B981; padding: 10px; border-radius: 6px; font-size: 0.85rem;">
+<b style="color:#FFFFFF;">§ Statutory Hierarchy</b><br><span style="color:#94A3B8;">Act 12/2011 jo Act 13/2022</span>
+</div>""", unsafe_allow_html=True)
+
+    st.markdown('<div class="lexis-divider"></div>', unsafe_allow_html=True)
+    
+    if st.button("RESET WORKSPACE DATA"):
         st.session_state["pdf_text"] = ""
         st.session_state["pdf_name"] = ""
-        st.session_state["pdf_signature"] = ""
         st.session_state["analysis_result"] = None
         st.session_state["chat_history"] = []
         st.session_state["robot_dismissed"] = False
-        # Increment uploader_key to clear both File Uploader and Text Area
-        st.session_state["uploader_key"] += 1
         st.rerun()
 
-    st.caption("🛡️ **GovShield Intelligence Engine v3.1**")
+    st.caption("🛡️ **GovShield Intelligence Engine v3.0**")
 
 # ---------------------------------------------------------
-# 9. ROBOT WELCOME OVERLAY
+# 8. ROBOT WELCOME OVERLAY (FUTURISTIC AI ROBOT)
 # ---------------------------------------------------------
 if not st.session_state["robot_dismissed"]:
     st.markdown("""
     <div class="robot-welcome-card">
-        <h2 style="font-family:'Playfair Display', serif; color:#FDE047; margin:0 0 8px 0;">Welcome to GovShield AI Legal Assistant</h2>
-        <p style="color:#CBD5E1; font-size:0.95rem; max-width:650px; margin:0 auto 18px auto;">
-            Automated Legal & Policy Intelligence Assistant using evidence-first grounded reasoning.
+        <div class="robot-avatar">
+            <svg width="95" height="95" viewBox="0 0 24 24" fill="none" stroke="url(#cyanGold)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="10" rx="4" fill="#070D1E"/>
+                <circle cx="12" cy="5" r="2.5" fill="#38BDF8"/>
+                <line x1="12" y1="7.5" x2="12" y2="11" stroke="#38BDF8" stroke-width="2"/>
+                <circle cx="8.5" cy="15" r="1.5" fill="#34D399"/>
+                <circle cx="15.5" cy="15" r="1.5" fill="#34D399"/>
+                <path d="M9.5 18.5h5" stroke="#FDE047" stroke-width="2" stroke-linecap="round"/>
+                <path d="M1 14h2M21 14h2" stroke="#38BDF8" stroke-width="2"/>
+                <defs>
+                    <linearGradient id="cyanGold" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stop-color="#38BDF8"/>
+                        <stop offset="100%" stop-color="#FDE047"/>
+                    </linearGradient>
+                </defs>
+            </svg>
+        </div>
+        <h2 style="font-family:'Playfair Display', serif; color:#FDE047; margin:0 0 8px 0; font-weight:800;">Welcome to GovShield AI Legal Assistant</h2>
+        <p style="color:#CBD5E1; font-size:0.95rem; max-width:680px; margin:0 auto 18px auto; line-height:1.6;">
+            I am your automated <b>Legal & Regulatory Intelligence Assistant</b>. I analyze legal cases, institutional policies, and statutory laws using evidence-first grounded reasoning.
+        </p>
+        <p style="color:#38BDF8; font-size:0.85rem; font-weight:700; margin-bottom:0; letter-spacing:0.5px;">
+            UPLOAD A PDF DOCUMENT OR INPUT YOUR LEGAL INQUIRY BELOW TO START
         </p>
     </div>
     """, unsafe_allow_html=True)
-
-    if st.button("🚀 LAUNCH LEGAL ANALYSIS WORKSPACE"):
+    
+    if st.button("LAUNCH LEGAL ANALYSIS WORKSPACE"):
         st.session_state["robot_dismissed"] = True
         st.rerun()
 
 # ---------------------------------------------------------
-# 10. INPUT AREA
+# 9. INPUT AREA (PDF UPLOAD + QUERY INPUT)
 # ---------------------------------------------------------
-st.markdown(f"📄 **OPTIONAL: SPECIFIC POLICY / PDF DOCUMENT ATTACHMENT (max {MAX_PDF_MB}MB)**")
+st.markdown("""<div class="custom-label">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EAB308" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+OPTIONAL: SPECIFIC POLICY / PDF DOCUMENT ATTACHMENT
+</div>""", unsafe_allow_html=True)
 
 uploaded_file = st.file_uploader(
-    "Upload Policy or Contract PDF",
-    type=["pdf"],
-    label_visibility="collapsed",
-    key=f"pdf_uploader_{st.session_state['uploader_key']}",
+    "Upload Policy or Contract PDF", type=["pdf"], label_visibility="collapsed"
 )
 
 if uploaded_file is not None:
     st.session_state["robot_dismissed"] = True
-    file_signature = f"{uploaded_file.name}:{uploaded_file.size}"
+    if st.session_state["pdf_name"] != uploaded_file.name:
+        try:
+            reader = PdfReader(uploaded_file)
+            extracted_text = ""
+            for page in reader.pages:
+                text = page.extract_text()
+                if text:
+                    extracted_text += text + "\n"
 
-    if st.session_state["pdf_signature"] != file_signature:
-        if uploaded_file.size > MAX_PDF_MB * 1024 * 1024:
-            st.error(f"❌ File size exceeds {MAX_PDF_MB}MB limit.")
-        else:
-            with st.spinner("Extracting PDF document..."):
-                try:
-                    reader = PdfReader(uploaded_file)
-                    if reader.is_encrypted:
-                        st.error("❌ PDF is encrypted.")
-                    else:
-                        extracted_text = ""
-                        for page in reader.pages:
-                            text = page.extract_text()
-                            if text:
-                                extracted_text += text + "\n"
+            st.session_state["pdf_text"] = extracted_text
+            st.session_state["pdf_name"] = uploaded_file.name
+        except Exception as err:
+            st.error(f"Failed to process PDF document: {err}")
 
-                        if not extracted_text.strip():
-                            st.warning("⚠️ No extractable text found in PDF.")
-
-                        st.session_state["pdf_text"] = extracted_text
-                        st.session_state["pdf_name"] = uploaded_file.name
-                        st.session_state["pdf_signature"] = file_signature
-                except Exception:
-                    st.error("❌ Failed to process PDF.")
-
-    if st.session_state["pdf_name"]:
-        st.success(f"✓ Active Document: {st.session_state['pdf_name']}")
+    st.markdown(f"""<div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; padding: 8px 14px; border-radius: 8px; font-size: 0.85rem; color: #34D399; margin-top: 4px; margin-bottom: 12px; display:flex; align-items:center; gap:8px;">
+<span style="font-weight:700;">✓ Active Custom Document:</span> {html.escape(st.session_state['pdf_name'])}
+</div>""", unsafe_allow_html=True)
 else:
     st.session_state["pdf_text"] = ""
     st.session_state["pdf_name"] = ""
-    st.session_state["pdf_signature"] = ""
+    st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
-st.markdown("❓ **POLICY INQUIRY / CASE SCENARIO / LEGAL QUERY (REQUIRED)**")
+# SEARCH AND QUERY FRAME
+st.markdown("""<div class="ai-search-frame">
+<div style="display:flex; justify-content:space-between; align-items:center;">
+<div class="custom-label" style="margin-bottom: 0 !important;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+POLICY INQUIRY / CASE SCENARIO / LEGAL QUERY (REQUIRED)
+</div>
+<div style="font-size: 0.78rem; color: #38BDF8; font-weight:600; display:flex; align-items:center;">
+<span class="pulse-dot"></span> AI REASONING READY
+</div>
+</div>
+</div>""", unsafe_allow_html=True)
 
-# BIND TEXT AREA TO SESSION STATE UPLOADER KEY FOR CLEAN RESET
 user_query = st.text_area(
     "Type your legal inquiry",
-    placeholder="Type your policy scenario or regulatory questions here...",
+    placeholder="Type your policy scenario, legal case details, or statutory questions here...",
     height=140,
     label_visibility="collapsed",
-    key=f"query_input_{st.session_state['uploader_key']}"
 )
 
 if user_query.strip():
     st.session_state["robot_dismissed"] = True
 
-_char_count = len(user_query)
-st.caption(f"{_char_count:,}/{MAX_QUERY_CHARS:,} characters")
+st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 11. EXECUTE BUTTON & AI REASONING LOGIC
+# 10. EXECUTE BUTTON & AI REASONING LOGIC
 # ---------------------------------------------------------
-run_clicked = st.button("RUN GOVSHIELD LEGAL INTELLIGENCE ANALYSIS", disabled=st.session_state["processing"])
-
-if run_clicked:
+if st.button("RUN GOVSHIELD LEGAL INTELLIGENCE ANALYSIS"):
     st.session_state["robot_dismissed"] = True
-    query_clean = user_query.strip()
-
-    if not query_clean:
-        st.warning("⚠️ Please enter a legal inquiry before proceeding.")
-    elif len(query_clean) > MAX_QUERY_CHARS:
-        st.warning(f"⚠️ Your inquiry is too long ({len(query_clean):,}/{MAX_QUERY_CHARS:,} characters).")
+    if not user_query.strip():
+        st.warning("⚠️ Please enter a legal inquiry or case scenario before proceeding.")
     else:
-        st.session_state["processing"] = True
-        try:
-            with st.spinner("Analyzing legal hierarchy & cross-referencing provisions..."):
+        with st.spinner("Analyzing legal hierarchy, cross-referencing provisions, and generating evidence-first reasoning..."):
+            try:
                 combined_context = f"{BUILTIN_KNOWLEDGE_BASE}\n[SELECTED REGULATORY SCOPE]: {reg_scope}\n"
-
-                # REFINED PARAGRAPH-AWARE TRUNCATION
                 if st.session_state["pdf_text"]:
-                    pdf_full = st.session_state["pdf_text"]
-                    if len(pdf_full) > MAX_PDF_CHARS:
-                        truncated_text = pdf_full[:MAX_PDF_CHARS].rsplit('\n', 1)[0]
-                        combined_context += f"\n[ATTACHED USER DOCUMENT / PDF]:\n{truncated_text}\n"
-                        st.info(f"ℹ️ Attached PDF was truncated neatly at paragraph boundary ({len(truncated_text):,} chars).")
-                    else:
-                        combined_context += f"\n[ATTACHED USER DOCUMENT / PDF]:\n{pdf_full}\n"
+                    combined_context += f"\n[ATTACHED USER DOCUMENT / PDF]:\n{st.session_state['pdf_text'][:14000]}\n"
 
-                client = OpenAI(
-                    api_key=GROQ_KEY,
-                    base_url=BASE_URL,
-                    timeout=REQUEST_TIMEOUT_SECS,
-                    max_retries=2,
-                )
+                client = OpenAI(api_key=GROQ_KEY, base_url=BASE_URL)
 
                 system_prompt = """
 You are GOVSHIELD AI, an evidence-first enterprise Legal & Regulatory Intelligence Assistant.
 
 CORE MANDATES:
-1. Analyze legal hierarchy based on user scope.
-2. Apply Lex Specialis Derogat Legi Generali and Lex Superior Derogat Legi Inferiori.
-3. Distinguish between General Provisions and Exceptions.
-4. Provide direct EVIDENCE quotes from UUD 1945 or uploaded PDF.
-5. IF NO EVIDENCE EXISTS, SET STATUS AS "REQUIRES HUMAN REVIEW". DO NOT HALLUCINATE.
+1. Analyze legal hierarchy (1945 Constitution / UUD 1945 vs Statutory Laws vs Institutional/Campus Decrees) based on the user's selected Regulatory Scope.
+2. Apply the legal principle "Lex Specialis Derogat Legi Generali" (Specific laws prevail over general laws) and "Lex Superior Derogat Legi Inferiori" (Higher ranking laws override lower laws).
+3. Distinguish clearly between General Provisions and Specific Provisions/Exceptions.
+4. Provide direct EVIDENCE quotes / clause citations from the 1945 Constitution (UUD 1945) or the uploaded PDF document.
+5. IF NO EVIDENCE OR DIRECT CLAUSES EXIST, SET STATUS AS "REQUIRES HUMAN REVIEW" and explicitly state that no corresponding clauses were found. DO NOT HALLUCINATE OR INVENT ARTICLES.
 6. RESPOND ENTIRELY IN ENGLISH.
 
 OUTPUT FORMAT (JSON ONLY):
 {
   "recommendation_status": "SUPPORTED" | "NOT SUPPORTED" | "REQUIRES HUMAN REVIEW",
-  "recommendation_summary": "Executive summary in English",
-  "applicable_rule": "The final governing legal rule or supreme principle",
-  "evidence": "Direct textual quote or clause citation",
+  "recommendation_summary": "Executive summary of the legal determination in English",
+  "applicable_rule": "The final governing legal rule or supreme constitutional principle applicable",
+  "evidence": "Direct textual quote, clause, or article reference serving as legal evidence",
   "rule_analysis": {
-    "general_provision": "General rule identified",
-    "specific_provision": "Specific rule or exception identified",
+    "general_provision": "General rule or statutory provision identified",
+    "specific_provision": "Specific rule, exception, or institutional decree identified",
     "exception_detected": true | false,
     "unresolved_conflict": true | false
   },
-  "reasoning_conclusion": "Detailed step-by-step legal reasoning",
-  "review_note": "Critical analysis note for legal counsel"
+  "reasoning_conclusion": "Detailed step-by-step legal reasoning and justification",
+  "review_note": "Critical analysis note or advice for human legal counsel"
 }
 """
 
-                user_prompt = f"GROUNDED KNOWLEDGE & DOCUMENTS:\n---\n{combined_context}\n---\nINQUIRY:\n{query_clean}"
+                user_prompt = f"""
+GROUNDED KNOWLEDGE & DOCUMENTS:
+---
+{combined_context}
+---
 
-                model_name = get_model_name(BASE_URL)
-                # UPGRADED TEMPERATURE TO 0.1 FOR STABLE JSON GENERATION
-                success, content = safe_llm_call(
-                    client,
-                    model_name,
-                    [
+INQUIRY / CASE SCENARIO:
+{user_query}
+"""
+
+                model_name = "llama-3.3-70b-versatile" if "groq" in BASE_URL.lower() else "gpt-4o-mini"
+
+                response = client.chat.completions.create(
+                    model=model_name,
+                    messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},
                     ],
-                    temperature=0.1,
+                    temperature=0.0,
                     response_format={"type": "json_object"},
                 )
 
-                if not success:
-                    st.error(f"❌ Analysis failed: {content}")
-                else:
-                    try:
-                        st.session_state["analysis_result"] = json.loads(content)
-                    except json.JSONDecodeError:
-                        st.error("❌ Invalid JSON format returned by AI. Please retry.")
-        except Exception as e:
-            st.error(f"❌ Technical error: {sanitize_error(e)}")
-        finally:
-            st.session_state["processing"] = False
+                st.session_state["analysis_result"] = json.loads(response.choices[0].message.content)
+
+            except Exception as e:
+                st.error(f"Technical Analysis Error: {e}")
 
 # ---------------------------------------------------------
-# 12. OUTPUT DASHBOARD & WORKSPACE
+# 11. OUTPUT DASHBOARD & MULTI-TAB WORKSPACE
 # ---------------------------------------------------------
 if st.session_state["analysis_result"]:
     result = st.session_state["analysis_result"]
-    ra = result.get("rule_analysis") or {}
-
+    
     st.markdown('<div class="lexis-divider"></div>', unsafe_allow_html=True)
-    st.markdown("### ⚖️ GOVSHIELD INTELLIGENCE ANALYSIS DASHBOARD")
+    st.markdown("""<div style="font-size:1.15rem; font-weight:800; color:#38BDF8; margin-bottom:16px; letter-spacing:1px; display:flex; align-items:center; gap:8px;">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+GOVSHIELD INTELLIGENCE ANALYSIS DASHBOARD
+</div>""", unsafe_allow_html=True)
 
     status = str(result.get("recommendation_status", "REQUIRES HUMAN REVIEW"))
     summary = html.escape(str(result.get("recommendation_summary", "")))
@@ -625,14 +747,15 @@ if st.session_state["analysis_result"]:
     elif status == "NOT SUPPORTED":
         st.markdown(f'<div class="badge-rejected">❌ RECOMMENDATION: NOT SUPPORTED — {summary}</div>', unsafe_allow_html=True)
     else:
-        st.markdown('<div class="badge-review">⚠️ STATUS: REQUIRES HUMAN REVIEW — Insufficient Direct Evidence</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="badge-review">⚠️ STATUS: REQUIRES HUMAN REVIEW — Insufficient Direct Evidence</div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
+    # TABULAR DISPLAY FOR DEEP DIVE & WORKSPACE
     tab1, tab2, tab3, tab4 = st.tabs([
-        "📊 Executive Summary & Evidence",
+        "📊 Executive Summary & Evidence", 
         "⚖️ Statutory Structure & Legal Reasoning",
-        "💬 Interactive Follow-up Q&A Assistant",
+        "💬 Interactive Q&A Assistant",
         "📥 Export Executive Legal Brief"
     ])
 
@@ -640,111 +763,120 @@ if st.session_state["analysis_result"]:
     evidence_text = html.escape(str(result.get('evidence', 'No direct text excerpt available')))
     reasoning = html.escape(str(result.get('reasoning_conclusion', '-')))
     review_note = html.escape(str(result.get('review_note', 'N/A')))
-    gen_prov = html.escape(str(ra.get('general_provision', '-')))
-    spec_prov = html.escape(str(ra.get('specific_provision', '-')))
 
     with tab1:
         r_col1, r_col2 = st.columns(2, gap="medium")
         with r_col1:
-            render_card("gold", "GOVERNING / APPLICABLE RULE", "⚖️", applicable_rule)
+            st.markdown(f"""<div class="lexis-card-gold">
+<div class="card-title-gold">⚖️ GOVERNING / APPLICABLE RULE</div>
+<div style="font-size:0.95rem; line-height:1.6; color:#F1F5F9;">{applicable_rule}</div>
+</div>""", unsafe_allow_html=True)
+
         with r_col2:
-            render_card("cyan", "CITATION & DIRECT LEGAL EVIDENCE EXCERPT", "📌", evidence_text)
+            st.markdown(f"""<div class="lexis-card-cyan">
+<div class="card-title-cyan">📌 CITATION &amp; DIRECT LEGAL EVIDENCE EXCERPT</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:0.85rem; color:#34D399; background:#070C1A; padding:12px; border-radius:8px; border: 1px solid rgba(56, 189, 248, 0.25);">
+{evidence_text}
+</div>
+</div>""", unsafe_allow_html=True)
 
     with tab2:
-        exc_str = 'YES' if ra.get('exception_detected') else 'NO'
-        conf_str = 'YES' if ra.get('unresolved_conflict') else 'NO'
+        ra = result.get("rule_analysis", {})
+        gen_prov = html.escape(str(ra.get('general_provision', '-')))
+        spec_prov = html.escape(str(ra.get('specific_provision', '-')))
+        exc_str = '<span style="color:#34D399; font-weight:700;">YES</span>' if ra.get('exception_detected') else '<span style="color:#F87171;">NO</span>'
+        conf_str = '<span style="color:#FDE047; font-weight:700;">YES</span>' if ra.get('unresolved_conflict') else '<span style="color:#34D399;">NO</span>'
 
-        norma_body = f"<b>General Provision:</b> {gen_prov}<br><b>Specific Exception:</b> {spec_prov}<br><b>Exception Detected:</b> {exc_str}<br><b>Normative Conflict:</b> {conf_str}"
-        render_card("cyan", "REGULATORY HIERARCHY & NORMA ANALYSIS", "📊", norma_body)
+        st.markdown(f"""<div class="lexis-card-cyan">
+<div class="card-title-cyan">📊 REGULATORY HIERARCHY &amp; NORMA ANALYSIS</div>
+<div style="font-size:0.9rem; line-height:1.8; color:#F1F5F9;">
+<div><b>General Provision:</b> {gen_prov}</div>
+<div><b>Specific Provision / Exception:</b> {spec_prov}</div>
+<div><b>Exception Detected:</b> {exc_str}</div>
+<div><b>Normative Conflict Detected:</b> {conf_str}</div>
+</div>
+</div>""", unsafe_allow_html=True)
 
-        rationale_body = f"{reasoning}<br><br>💡 <b>Counsel Advisory Note:</b> {review_note}"
-        render_card("gold", "DETAILED LEGAL RATIONALE & CONCLUSION", "📝", rationale_body)
+        st.markdown(f"""<div class="lexis-card-gold">
+<div class="card-title-gold">📝 DETAILED LEGAL RATIONALE &amp; CONCLUSION</div>
+<div style="font-size:0.95rem; line-height:1.6; color:#E2E8F0;">
+{reasoning}
+</div>
+<div style="font-size:0.85rem; color:#94A3B8; margin-top:14px; border-top:1px solid rgba(234, 179, 8, 0.2); padding-top:8px;">
+💡 <b>Legal Counsel Advisory Note:</b> {review_note}
+</div>
+</div>""", unsafe_allow_html=True)
 
+    # TAB 3: INTERACTIVE CHAT WORKSPACE
     with tab3:
         st.markdown("### 💬 Interactive Legal Q&A Assistant")
+        st.caption("Ask questions about this legal determination, uploaded document clauses, or relevant statutory rules.")
 
         for msg in st.session_state["chat_history"]:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
-        chat_input = st.chat_input("Ask a follow-up question regarding this case...")
-        if chat_input:
-            chat_input = chat_input.strip()[:MAX_QUERY_CHARS]
+        if chat_input := st.chat_input("Ask a follow-up question regarding this case..."):
             st.session_state["chat_history"].append({"role": "user", "content": chat_input})
             with st.chat_message("user"):
                 st.markdown(chat_input)
 
             with st.chat_message("assistant"):
-                with st.spinner("Analyzing follow-up..."):
+                with st.spinner("Analyzing follow-up legal question..."):
                     try:
-                        chat_client = OpenAI(
-                            api_key=GROQ_KEY,
-                            base_url=BASE_URL,
-                            timeout=REQUEST_TIMEOUT_SECS,
-                            max_retries=2,
-                        )
-                        # SANITIZED SYSTEM PROMPT WITH TRIMMED HISTORY
+                        client = OpenAI(api_key=GROQ_KEY, base_url=BASE_URL)
                         followup_messages = [
-                            {"role": "system", "content": f"You are GovShield AI Legal Assistant. Answer strictly based on this context: {json.dumps(result)}"},
-                        ] + st.session_state["chat_history"][-MAX_CHAT_TURNS_SENT:]
+                            {"role": "system", "content": f"You are GovShield AI Legal Assistant. Answer strictly based on this legal analysis and ground context: {json.dumps(result)}"},
+                        ] + st.session_state["chat_history"]
 
-                        chat_success, chat_answer = safe_llm_call(
-                            chat_client,
-                            get_model_name(BASE_URL),
-                            followup_messages,
-                            temperature=0.1,
+                        resp = client.chat.completions.create(
+                            model="llama-3.3-70b-versatile" if "groq" in BASE_URL.lower() else "gpt-4o-mini",
+                            messages=followup_messages,
+                            temperature=0.2
                         )
-
-                        if chat_success:
-                            st.markdown(chat_answer)
-                            st.session_state["chat_history"].append({"role": "assistant", "content": chat_answer})
-                        else:
-                            st.error(f"❌ {chat_answer}")
+                        answer = resp.choices[0].message.content
+                        st.markdown(answer)
+                        st.session_state["chat_history"].append({"role": "assistant", "content": answer})
                     except Exception as err:
-                        st.error(f"❌ Chat error: {sanitize_error(err)}")
+                        st.error(f"Chat error: {err}")
 
+    # TAB 4: DOWNLOAD REPORT
     with tab4:
         st.markdown("### 📥 Download Formal Legal Determination Brief")
-        generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         report_text = f"""================================================================================
 GOVSHIELD AI - FORMAL LEGAL & REGULATORY DETERMINATION REPORT
 ================================================================================
-Generated: {generated_at}
 Status: {status}
 Regulatory Scope: {reg_scope}
 Attached Document: {st.session_state['pdf_name'] or 'None'}
 
 EXECUTIVE SUMMARY:
-{result.get('recommendation_summary') or '-'}
+{result.get('recommendation_summary')}
 
 GOVERNING / APPLICABLE LEGAL RULE:
-{result.get('applicable_rule') or '-'}
+{result.get('applicable_rule')}
 
 DIRECT LEGAL EVIDENCE & CITATION:
-{result.get('evidence') or '-'}
+{result.get('evidence')}
 
 REGULATORY NORMA ANALYSIS:
-- General Provision: {ra.get('general_provision') or '-'}
-- Specific Provision / Exception: {ra.get('specific_provision') or '-'}
+- General Provision: {ra.get('general_provision')}
+- Specific Provision / Exception: {ra.get('specific_provision')}
 - Exception Detected: {ra.get('exception_detected')}
 - Conflict Detected: {ra.get('unresolved_conflict')}
 
 DETAILED LEGAL RATIONALE:
-{result.get('reasoning_conclusion') or '-'}
+{result.get('reasoning_conclusion')}
 
 LEGAL COUNSEL ADVISORY NOTE:
-{result.get('review_note') or '-'}
+{result.get('review_note')}
+================================================================================
+Generated automatically by GovShield AI Engine v3.0
 ================================================================================
 """
         st.download_button(
-            label="📄 DOWNLOAD FORMAL LEGAL REPORT (.TXT)",
+            label="DOWNLOAD FORMAL LEGAL REPORT (.TXT)",
             data=report_text,
             file_name="GovShield_Executive_Legal_Brief.txt",
             mime="text/plain"
         )
-
-# ---------------------------------------------------------
-# 13. FOOTER
-# ---------------------------------------------------------
-st.markdown('<div class="lexis-divider"></div>', unsafe_allow_html=True)
-st.caption("⚖️ GovShield AI provides AI-generated legal analysis for informational purposes only. Session data stays in memory.")
