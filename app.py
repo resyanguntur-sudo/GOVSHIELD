@@ -28,7 +28,7 @@ except Exception as e:
     st.stop()
 
 # ---------------------------------------------------------
-# 3. UNIVERSAL THEME STYLES (ENTERPRISE DARK THEME + ANIMATIONS)
+# 3. UNIVERSAL THEME STYLES (ENTERPRISE DARK THEME + FULL SVG ANIMATIONS)
 # ---------------------------------------------------------
 st.markdown("""<style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -484,6 +484,10 @@ if "pdf_name" not in st.session_state:
     st.session_state["pdf_name"] = ""
 if "robot_dismissed" not in st.session_state:
     st.session_state["robot_dismissed"] = False
+if "analysis_result" not in st.session_state:
+    st.session_state["analysis_result"] = None
+if "chat_history" not in st.session_state:
+    st.session_state["chat_history"] = []
 
 # ---------------------------------------------------------
 # 7. SIDEBAR CONFIGURATION (MULTI-TIER SCOPE SELECTOR)
@@ -524,6 +528,15 @@ with st.sidebar:
 </div>""", unsafe_allow_html=True)
 
     st.markdown('<div class="lexis-divider"></div>', unsafe_allow_html=True)
+    
+    if st.button("🗑️ RESET WORKSPACE DATA"):
+        st.session_state["pdf_text"] = ""
+        st.session_state["pdf_name"] = ""
+        st.session_state["analysis_result"] = None
+        st.session_state["chat_history"] = []
+        st.session_state["robot_dismissed"] = False
+        st.rerun()
+
     st.caption("🛡️ **GovShield Intelligence Engine v3.0**")
 
 # ---------------------------------------------------------
@@ -685,60 +698,71 @@ INQUIRY / CASE SCENARIO:
                     response_format={"type": "json_object"},
                 )
 
-                result = json.loads(response.choices[0].message.content)
+                st.session_state["analysis_result"] = json.loads(response.choices[0].message.content)
 
-                # ---------------------------------------------------------
-                # 11. OUTPUT DASHBOARD
-                # ---------------------------------------------------------
-                st.markdown('<div class="lexis-divider"></div>', unsafe_allow_html=True)
-                st.markdown("""<div style="font-size:1.15rem; font-weight:800; color:#38BDF8; margin-bottom:16px; letter-spacing:1px;">
+            except Exception as e:
+                st.error(f"Technical Analysis Error: {e}")
+
+# ---------------------------------------------------------
+# 11. OUTPUT DASHBOARD & MULTI-TAB WORKSPACE
+# ---------------------------------------------------------
+if st.session_state["analysis_result"]:
+    result = st.session_state["analysis_result"]
+    
+    st.markdown('<div class="lexis-divider"></div>', unsafe_allow_html=True)
+    st.markdown("""<div style="font-size:1.15rem; font-weight:800; color:#38BDF8; margin-bottom:16px; letter-spacing:1px;">
 ⚖️ GOVSHIELD INTELLIGENCE ANALYSIS DASHBOARD
 </div>""", unsafe_allow_html=True)
 
-                status = str(result.get("recommendation_status", "REQUIRES HUMAN REVIEW"))
-                summary = html.escape(str(result.get("recommendation_summary", "")))
+    status = str(result.get("recommendation_status", "REQUIRES HUMAN REVIEW"))
+    summary = html.escape(str(result.get("recommendation_summary", "")))
 
-                if status == "SUPPORTED":
-                    st.markdown(f'<div class="badge-supported">✅ RECOMMENDATION: SUPPORTED — {summary}</div>', unsafe_allow_html=True)
-                elif status == "NOT SUPPORTED":
-                    st.markdown(f'<div class="badge-rejected">❌ RECOMMENDATION: NOT SUPPORTED — {summary}</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f'<div class="badge-review">⚠️ STATUS: REQUIRES HUMAN REVIEW — Insufficient Direct Evidence</div>', unsafe_allow_html=True)
+    if status == "SUPPORTED":
+        st.markdown(f'<div class="badge-supported">✅ RECOMMENDATION: SUPPORTED — {summary}</div>', unsafe_allow_html=True)
+    elif status == "NOT SUPPORTED":
+        st.markdown(f'<div class="badge-rejected">❌ RECOMMENDATION: NOT SUPPORTED — {summary}</div>', unsafe_allow_html=True)
+    else:
+        st.markdown(f'<div class="badge-review">⚠️ STATUS: REQUIRES HUMAN REVIEW — Insufficient Direct Evidence</div>', unsafe_allow_html=True)
 
-                st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
 
-                # TABULAR DISPLAY FOR DEEP DIVE
-                tab1, tab2 = st.tabs(["📊 Executive Summary & Evidence", "⚖️ Statutory Structure & Legal Reasoning"])
+    # TABULAR DISPLAY FOR DEEP DIVE & UPGRADED WORKSPACE
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📊 Executive Summary & Evidence", 
+        "⚖️ Statutory Structure & Legal Reasoning",
+        "💬 Interactive Follow-up Q&A Assistant",
+        "📥 Export Executive Legal Brief"
+    ])
 
-                applicable_rule = html.escape(str(result.get('applicable_rule', '-')))
-                evidence_text = html.escape(str(result.get('evidence', 'No direct text excerpt available')))
-                reasoning = html.escape(str(result.get('reasoning_conclusion', '-')))
-                review_note = html.escape(str(result.get('review_note', 'N/A')))
+    applicable_rule = html.escape(str(result.get('applicable_rule', '-')))
+    evidence_text = html.escape(str(result.get('evidence', 'No direct text excerpt available')))
+    reasoning = html.escape(str(result.get('reasoning_conclusion', '-')))
+    review_note = html.escape(str(result.get('review_note', 'N/A')))
 
-                with tab1:
-                    r_col1, r_col2 = st.columns(2, gap="medium")
-                    with r_col1:
-                        st.markdown(f"""<div class="lexis-card-gold">
+    with tab1:
+        r_col1, r_col2 = st.columns(2, gap="medium")
+        with r_col1:
+            st.markdown(f"""<div class="lexis-card-gold">
 <div class="card-title-gold">⚖️ GOVERNING / APPLICABLE RULE</div>
 <div style="font-size:0.95rem; line-height:1.6; color:#F1F5F9;">{applicable_rule}</div>
 </div>""", unsafe_allow_html=True)
 
-                    with r_col2:
-                        st.markdown(f"""<div class="lexis-card-cyan">
+        with r_col2:
+            st.markdown(f"""<div class="lexis-card-cyan">
 <div class="card-title-cyan">📌 CITATION &amp; DIRECT LEGAL EVIDENCE EXCERPT</div>
 <div style="font-family:'JetBrains Mono', monospace; font-size:0.85rem; color:#34D399; background:#070C1A; padding:12px; border-radius:8px; border: 1px solid rgba(56, 189, 248, 0.25);">
 {evidence_text}
 </div>
 </div>""", unsafe_allow_html=True)
 
-                with tab2:
-                    ra = result.get("rule_analysis", {})
-                    gen_prov = html.escape(str(ra.get('general_provision', '-')))
-                    spec_prov = html.escape(str(ra.get('specific_provision', '-')))
-                    exc_str = '<span style="color:#34D399; font-weight:700;">YES</span>' if ra.get('exception_detected') else '<span style="color:#F87171;">NO</span>'
-                    conf_str = '<span style="color:#FDE047; font-weight:700;">YES</span>' if ra.get('unresolved_conflict') else '<span style="color:#34D399;">NO</span>'
+    with tab2:
+        ra = result.get("rule_analysis", {})
+        gen_prov = html.escape(str(ra.get('general_provision', '-')))
+        spec_prov = html.escape(str(ra.get('specific_provision', '-')))
+        exc_str = '<span style="color:#34D399; font-weight:700;">YES</span>' if ra.get('exception_detected') else '<span style="color:#F87171;">NO</span>'
+        conf_str = '<span style="color:#FDE047; font-weight:700;">YES</span>' if ra.get('unresolved_conflict') else '<span style="color:#34D399;">NO</span>'
 
-                    st.markdown(f"""<div class="lexis-card-cyan">
+        st.markdown(f"""<div class="lexis-card-cyan">
 <div class="card-title-cyan">📊 REGULATORY HIERARCHY &amp; NORMA ANALYSIS</div>
 <div style="font-size:0.9rem; line-height:1.8; color:#F1F5F9;">
 <div><b>General Provision:</b> {gen_prov}</div>
@@ -748,7 +772,7 @@ INQUIRY / CASE SCENARIO:
 </div>
 </div>""", unsafe_allow_html=True)
 
-                    st.markdown(f"""<div class="lexis-card-gold">
+        st.markdown(f"""<div class="lexis-card-gold">
 <div class="card-title-gold">📝 DETAILED LEGAL RATIONALE &amp; CONCLUSION</div>
 <div style="font-size:0.95rem; line-height:1.6; color:#E2E8F0;">
 {reasoning}
@@ -758,5 +782,76 @@ INQUIRY / CASE SCENARIO:
 </div>
 </div>""", unsafe_allow_html=True)
 
-            except Exception as e:
-                st.error(f"Technical Analysis Error: {e}")
+    # TAB 3: INTERACTIVE CHAT WORKSPACE
+    with tab3:
+        st.markdown("### 💬 Interactive Legal Q&A Assistant")
+        st.caption("Ask questions about this legal determination, uploaded document clauses, or relevant statutory rules.")
+
+        for msg in st.session_state["chat_history"]:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+
+        if chat_input := st.chat_input("Ask a follow-up question regarding this case..."):
+            st.session_state["chat_history"].append({"role": "user", "content": chat_input})
+            with st.chat_message("user"):
+                st.markdown(chat_input)
+
+            with st.chat_message("assistant"):
+                with st.spinner("Analyzing follow-up legal question..."):
+                    try:
+                        client = OpenAI(api_key=GROQ_KEY, base_url=BASE_URL)
+                        followup_messages = [
+                            {"role": "system", "content": f"You are GovShield AI Legal Assistant. Answer strictly based on this legal analysis and ground context: {json.dumps(result)}"},
+                        ] + st.session_state["chat_history"]
+
+                        resp = client.chat.completions.create(
+                            model="llama-3.3-70b-versatile" if "groq" in BASE_URL.lower() else "gpt-4o-mini",
+                            messages=followup_messages,
+                            temperature=0.2
+                        )
+                        answer = resp.choices[0].message.content
+                        st.markdown(answer)
+                        st.session_state["chat_history"].append({"role": "assistant", "content": answer})
+                    except Exception as err:
+                        st.error(f"Chat error: {err}")
+
+    # TAB 4: DOWNLOAD REPORT
+    with tab4:
+        st.markdown("### 📥 Download Formal Legal Determination Brief")
+        report_text = f"""================================================================================
+GOVSHIELD AI - FORMAL LEGAL & REGULATORY DETERMINATION REPORT
+================================================================================
+Status: {status}
+Regulatory Scope: {reg_scope}
+Attached Document: {st.session_state['pdf_name'] or 'None'}
+
+EXECUTIVE SUMMARY:
+{result.get('recommendation_summary')}
+
+GOVERNING / APPLICABLE LEGAL RULE:
+{result.get('applicable_rule')}
+
+DIRECT LEGAL EVIDENCE & CITATION:
+{result.get('evidence')}
+
+REGULATORY NORMA ANALYSIS:
+- General Provision: {ra.get('general_provision')}
+- Specific Provision / Exception: {ra.get('specific_provision')}
+- Exception Detected: {ra.get('exception_detected')}
+- Conflict Detected: {ra.get('unresolved_conflict')}
+
+DETAILED LEGAL RATIONALE:
+{result.get('reasoning_conclusion')}
+
+LEGAL COUNSEL ADVISORY NOTE:
+{result.get('review_note')}
+================================================================================
+Generated automatically by GovShield AI Engine v3.0
+================================================================================
+"""
+        st.download_button(
+            label="📄 DOWNLOAD FORMAL LEGAL REPORT (.TXT)",
+            data=report_text,
+            file_name="GovShield_Executive_Legal_Brief.txt",
+            mime="text/plain"
+        )
