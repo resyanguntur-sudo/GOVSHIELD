@@ -18,7 +18,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Benchmark Startup Performance Telemetry
 if "boot_timestamp" not in st.session_state:
     st.session_state["boot_timestamp"] = time.time()
 
@@ -42,7 +41,6 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-/* --- ROOT VARIABLES & TYPOGRAPHY --- */
 :root {
     --bg-dark-primary: #040711;
     --bg-dark-secondary: #0A142F;
@@ -63,7 +61,6 @@ st.markdown("""
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* --- HEADER & SIDEBAR NAVIGATION OVERRIDES --- */
 header[data-testid="stHeader"] {
     background: transparent !important;
     z-index: 99999 !important;
@@ -78,12 +75,6 @@ button[data-testid="baseButton-headerNoPadding"] {
     box-shadow: 0 0 12px rgba(234, 179, 8, 0.25) !important;
 }
 
-button[data-testid="stSidebarCollapseButton"]:hover, 
-button[data-testid="baseButton-headerNoPadding"]:hover {
-    border-color: var(--accent-cyan) !important;
-    background-color: #0D1B3E !important;
-}
-
 .block-container {
     padding-top: 1.5rem !important;
     padding-bottom: 2.5rem !important;
@@ -94,21 +85,18 @@ button[data-testid="baseButton-headerNoPadding"]:hover {
     z-index: 2;
 }
 
-/* --- BASE BACKGROUND WITH LEGAL WATERMARK & LASER GLOW --- */
+/* BASE BACKGROUND */
 .stApp {
     background-color: var(--bg-dark-primary) !important;
     background-image: 
-        url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 24 24" fill="none" stroke="rgba(234,179,8,0.025)" stroke-width="0.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M19 7l2 8H17l2-8z"/><path d="M5 7l2 8H3l2-8z"/><path d="M9 21h6"/><path d="M4 21h16"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>'),
         radial-gradient(circle at 12% -8%, rgba(234, 179, 8, 0.15) 0%, transparent 40%),
         radial-gradient(circle at 108% 6%, rgba(56, 189, 248, 0.16) 0%, transparent 45%),
-        radial-gradient(circle at 50% 105%, rgba(56, 189, 248, 0.1) 0%, transparent 60%),
         radial-gradient(circle at 50% 20%, #0F1C3F 0%, #080E21 65%, var(--bg-dark-primary) 100%) !important;
-    background-position: center center, 0 0, 0 0, 0 0, 0 0 !important;
     background-repeat: no-repeat !important;
     background-attachment: fixed !important;
 }
 
-/* --- SIDEBAR STYLING --- */
+/* SIDEBAR STYLING */
 section[data-testid="stSidebar"] {
     background-color: #070D1E !important;
     border-right: 1px solid var(--border-cyan) !important;
@@ -118,38 +106,43 @@ section[data-testid="stSidebar"] * {
     color: var(--text-light) !important;
 }
 
-/* --- PEMBERANTASAN LATAR PUTIH: SELECTBOX, CHAT INPUT, DROPDOWN & INPUTS --- */
-div[data-baseweb="select"] > div {
-    background-color: var(--bg-dark-secondary) !important;
-    border: 1.5px solid var(--accent-cyan) !important;
-    border-radius: 10px !important;
-    color: var(--accent-gold) !important;
-}
-
+/* PERBAIKAN TOTAL: SELECTBOX, DROPDOWN & INPUTS (PEMBERANTASAN LATAR PUTIH) */
+div[data-testid="stSelectbox"],
+div[data-testid="stSelectbox"] > div,
+div[data-testid="stSelectbox"] > div > div,
+div[data-baseweb="select"],
+div[data-baseweb="select"] > div,
 div[data-baseweb="select"] * {
-    background-color: transparent !important;
-    color: var(--accent-gold) !important;
+    background-color: #0A142F !important;
+    color: #FDE047 !important;
+    border-color: #38BDF8 !important;
     font-weight: 600 !important;
 }
 
+div[data-baseweb="select"] {
+    border: 1.5px solid #38BDF8 !important;
+    border-radius: 10px !important;
+}
+
+div[data-baseweb="popover"],
 div[data-baseweb="menu"], 
 ul[role="listbox"], 
 div[data-testid="stSelectboxVirtualDropdown"] {
-    background-color: var(--bg-dark-tertiary) !important;
-    border: 1px solid var(--accent-cyan) !important;
+    background-color: #0F172A !important;
+    border: 1px solid #38BDF8 !important;
     border-radius: 10px !important;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.9) !important;
 }
 
 li[role="option"] {
-    background-color: var(--bg-dark-tertiary) !important;
-    color: var(--text-light) !important;
+    background-color: #0F172A !important;
+    color: #F8FAFC !important;
     padding: 10px 14px !important;
 }
 
 li[role="option"]:hover, li[aria-selected="true"] {
     background-color: #1E293B !important;
-    color: var(--accent-gold) !important;
+    color: #FDE047 !important;
 }
 
 /* Chat Input Styling */
@@ -166,11 +159,6 @@ div[data-testid="stChatInput"] textarea {
     font-size: 0.95rem !important;
 }
 
-div[data-testid="stChatInput"] textarea::placeholder {
-    color: var(--text-muted) !important;
-}
-
-/* Textarea Override */
 textarea {
     background-color: var(--bg-dark-secondary) !important;
     color: var(--text-light) !important;
@@ -179,33 +167,9 @@ textarea {
     border: 1.5px solid var(--accent-cyan) !important;
     border-radius: 12px !important;
     padding: 14px !important;
-    box-shadow: 0 0 15px rgba(56, 189, 248, 0.15) !important;
 }
 
-textarea:focus {
-    border-color: var(--accent-gold) !important;
-    box-shadow: 0 0 22px rgba(253, 224, 71, 0.3) !important;
-    background-color: #0D1B3E !important;
-}
-
-textarea::placeholder {
-    color: var(--text-muted) !important;
-    opacity: 1 !important;
-}
-
-/* File Uploader Override */
-section[data-testid="stFileUploader"] {
-    background-color: rgba(10, 20, 47, 0.8) !important;
-    border: 1.5px solid var(--accent-gold-dark) !important;
-    border-radius: 12px !important;
-    padding: 8px 14px !important;
-}
-
-section[data-testid="stFileUploader"] * {
-    color: var(--text-light) !important;
-}
-
-/* --- PENGUATAN KONTRAS TABS ENGINE --- */
+/* TABS STYLING */
 div[data-baseweb="tab-list"] {
     background-color: var(--bg-dark-secondary) !important;
     padding: 6px !important;
@@ -220,47 +184,27 @@ button[data-baseweb="tab"] {
     border-radius: 8px !important;
     color: var(--text-muted) !important;
     font-weight: 700 !important;
-    font-size: 0.88rem !important;
     padding: 10px 18px !important;
-    transition: all 0.2s ease-in-out !important;
-}
-
-button[data-baseweb="tab"]:hover {
-    color: var(--accent-cyan) !important;
-    border-color: var(--accent-cyan) !important;
-    background-color: #132247 !important;
 }
 
 button[aria-selected="true"] {
     background: linear-gradient(135deg, #0F2B5B 0%, #1E3A8A 100%) !important;
     color: var(--accent-gold) !important;
     border: 1.5px solid var(--accent-gold) !important;
-    box-shadow: 0 0 15px rgba(234, 179, 8, 0.35) !important;
 }
 
-/* --- BUTTON CUSTOM STYLING --- */
+/* BUTTON CUSTOM STYLING */
 div.stButton > button {
     background: linear-gradient(135deg, var(--accent-cyan-dark) 0%, #0369A1 100%) !important;
     color: #FFFFFF !important;
     font-weight: 800 !important;
-    font-size: 0.95rem !important;
     border: 1px solid var(--accent-cyan) !important;
     border-radius: 10px !important;
     padding: 14px 28px !important;
-    box-shadow: 0 0 20px rgba(56, 189, 248, 0.3) !important;
     width: 100% !important;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    transition: all 0.25s ease !important;
 }
 
-div.stButton > button:hover {
-    background: linear-gradient(135deg, #0284C7 0%, #0D9488 100%) !important;
-    border-color: var(--accent-gold) !important;
-    box-shadow: 0 0 25px rgba(253, 224, 71, 0.4) !important;
-}
-
-/* --- ENTERPRISE CARDS & CONTAINERS --- */
 .lexis-card-cyan {
     background: rgba(14, 26, 56, 0.85);
     border: 1px solid var(--border-cyan);
@@ -268,7 +212,6 @@ div.stButton > button:hover {
     padding: 20px;
     margin-bottom: 16px;
     color: var(--text-light) !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
 
 .lexis-card-gold {
@@ -278,7 +221,6 @@ div.stButton > button:hover {
     padding: 20px;
     margin-bottom: 16px;
     color: var(--text-light) !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
 
 .card-title-cyan {
@@ -299,7 +241,6 @@ div.stButton > button:hover {
     text-transform: uppercase;
 }
 
-/* --- STATUS BADGES --- */
 .badge-supported {
     background: rgba(16, 185, 129, 0.15);
     border: 1px solid #10B981;
@@ -307,7 +248,6 @@ div.stButton > button:hover {
     padding: 16px 22px;
     border-radius: 12px;
     font-weight: 700;
-    box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
 }
 
 .badge-review {
@@ -317,7 +257,6 @@ div.stButton > button:hover {
     padding: 16px 22px;
     border-radius: 12px;
     font-weight: 700;
-    box-shadow: 0 0 15px rgba(234, 179, 8, 0.2);
 }
 
 .badge-rejected {
@@ -327,10 +266,8 @@ div.stButton > button:hover {
     padding: 16px 22px;
     border-radius: 12px;
     font-weight: 700;
-    box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
 }
 
-/* --- TELEMETRY & SIDEBAR COMPONENT STYLES --- */
 .telemetry-card {
     background: rgba(10, 20, 47, 0.9);
     border: 1px solid rgba(56, 189, 248, 0.25);
@@ -353,14 +290,8 @@ div.stButton > button:hover {
     border-bottom: none;
 }
 
-.telemetry-label {
-    color: var(--text-muted);
-}
-
-.telemetry-value {
-    color: var(--accent-cyan);
-    font-weight: 600;
-}
+.telemetry-label { color: var(--text-muted); }
+.telemetry-value { color: var(--accent-cyan); font-weight: 600; }
 
 .security-badge {
     display: flex;
@@ -377,7 +308,6 @@ div.stButton > button:hover {
     font-size: 0.78rem;
     font-weight: 700;
     color: var(--accent-emerald);
-    letter-spacing: 0.5px;
 }
 
 .custom-label {
@@ -405,7 +335,6 @@ div.stButton > button:hover {
     height: 8px;
     background-color: var(--accent-emerald);
     border-radius: 50%;
-    box-shadow: 0 0 8px var(--accent-emerald);
     display: inline-block;
     margin-right: 6px;
 }
@@ -416,11 +345,9 @@ div.stButton > button:hover {
     border-radius: 20px;
     padding: 28px;
     text-align: center;
-    box-shadow: 0 0 35px rgba(234, 179, 8, 0.2), inset 0 0 15px rgba(56, 189, 248, 0.12);
     margin-bottom: 25px;
 }
 
-/* Floating Top Left Badge */
 .floating-topleft-badge {
     position: fixed;
     top: 52px;
@@ -430,12 +357,9 @@ div.stButton > button:hover {
     align-items: center;
     gap: 9px;
     background: rgba(8, 14, 33, 0.9);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
     border: 1px solid rgba(234, 179, 8, 0.4);
     border-radius: 999px;
     padding: 6px 16px 6px 8px;
-    box-shadow: 0 4px 22px rgba(0,0,0,0.4), 0 0 14px rgba(56,189,248,0.14);
 }
 
 .floating-topleft-badge .fb-icon {
@@ -443,8 +367,6 @@ div.stButton > button:hover {
     border-radius: 50%;
     background: linear-gradient(135deg, #EAB308, #FDE047);
     display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-    box-shadow: 0 0 10px rgba(234,179,8,0.5);
 }
 
 .floating-topleft-badge .fb-name {
@@ -452,16 +374,12 @@ div.stButton > button:hover {
     font-weight: 700;
     font-size: 0.8rem;
     color: var(--accent-gold) !important;
-    letter-spacing: 0.3px;
-    white-space: nowrap;
 }
 
 .floating-topleft-badge .fb-desc {
     font-size: 0.6rem;
     color: var(--accent-cyan) !important;
     font-weight: 600;
-    letter-spacing: 0.2px;
-    white-space: nowrap;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -482,78 +400,65 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# 4. BANNER EMAS EXTENDED LEGAL SVG HEADER (MEMANJANG FULL WIDTH)
+# 4. HEADER LEGAL BANNER (PERBAIKAN: RAW HTML STRING UNINDENTED TANPA TAB/SPASI)
 # ==============================================================================
-st.markdown("""
-<div style="width: 100%; position: relative; margin-bottom: 24px;">
-    <svg width="100%" height="150" viewBox="0 0 1200 150" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius: 16px; filter: drop-shadow(0px 8px 24px rgba(0,0,0,0.6));">
-        <!-- Background Gradient Frame -->
-        <rect width="1200" height="150" rx="16" fill="url(#bgGradient)" stroke="url(#goldBorder)" stroke-width="2"/>
-        
-        <!-- Subtle Hexagon / Security Pattern Mesh -->
-        <path d="M 0,30 L 1200,30 M 0,75 L 1200,75 M 0,120 L 1200,120" stroke="rgba(56,189,248,0.06)" stroke-width="1" stroke-dasharray="8 4"/>
-        <path d="M 200,0 L 200,150 M 600,0 L 600,150 M 1000,0 L 1000,150" stroke="rgba(234,179,8,0.05)" stroke-width="1" stroke-dasharray="10 5"/>
+svg_banner_html = """<div style="width: 100%; position: relative; margin-bottom: 24px;">
+<svg width="100%" height="150" viewBox="0 0 1200 150" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius: 16px; filter: drop-shadow(0px 8px 24px rgba(0,0,0,0.6));">
+<rect width="1200" height="150" rx="16" fill="url(#bgGradient)" stroke="url(#goldBorder)" stroke-width="2"/>
+<path d="M 0,30 L 1200,30 M 0,75 L 1200,75 M 0,120 L 1200,120" stroke="rgba(56,189,248,0.06)" stroke-width="1" stroke-dasharray="8 4"/>
+<path d="M 200,0 L 200,150 M 600,0 L 600,150 M 1000,0 L 1000,150" stroke="rgba(234,179,8,0.05)" stroke-width="1" stroke-dasharray="10 5"/>
+<g transform="translate(35, 25)">
+<circle cx="50" cy="50" r="42" fill="url(#shieldGlow)" stroke="#FDE047" stroke-width="1.5"/>
+<path d="M50 18 V78 M30 32 H70 M30 32 L18 58 H42 L30 32 M70 32 L58 58 H82 L70 32 M25 78 H75" stroke="#FDE047" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="50" cy="18" r="4" fill="#38BDF8"/>
+</g>
+<g transform="translate(145, 42)">
+<text x="0" y="32" fill="url(#textGoldGrad)" font-family="'Playfair Display', serif" font-size="30" font-weight="800" letter-spacing="2">GOVSHIELD AI ENTERPRISE</text>
+<text x="0" y="55" fill="#38BDF8" font-family="'Plus Jakarta Sans', sans-serif" font-size="13" font-weight="700" letter-spacing="1">EVIDENCE-FIRST LEGAL & REGULATORY DECISION INTELLIGENCE PLATFORM</text>
+<text x="0" y="74" fill="#94A3B8" font-family="'Playfair Display', serif" font-size="11" font-style="italic">"Fiat justitia ruat caelum" — Statutory Hierarchy & Constitutional Compliance Verification</text>
+</g>
+<g transform="translate(930, 20)" opacity="0.85">
+<rect x="0" y="0" width="230" height="110" rx="10" fill="rgba(10, 20, 47, 0.7)" stroke="rgba(234,179,8,0.4)" stroke-width="1.2"/>
+<path d="M 20 25 H 210 M 20 45 H 170 M 20 65 H 190 M 20 85 H 140" stroke="#38BDF8" stroke-width="2" stroke-linecap="round"/>
+<text x="160" y="90" fill="#FDE047" font-family="'JetBrains Mono', monospace" font-size="12" font-weight="800">§ LEX SUPERIOR</text>
+</g>
+<line x1="20" y1="148" x2="1180" y2="148" stroke="url(#laserLineGrad)" stroke-width="2.5" stroke-linecap="round"/>
+<defs>
+<linearGradient id="bgGradient" x1="0" y1="0" x2="1200" y2="150" gradientUnits="userSpaceOnUse">
+<stop offset="0%" stop-color="#080E21"/>
+<stop offset="50%" stop-color="#0F1C3F"/>
+<stop offset="100%" stop-color="#040711"/>
+</linearGradient>
+<linearGradient id="goldBorder" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
+<stop offset="0%" stop-color="#EAB308" stop-opacity="0.8"/>
+<stop offset="50%" stop-color="#38BDF8" stop-opacity="0.6"/>
+<stop offset="100%" stop-color="#EAB308" stop-opacity="0.8"/>
+</linearGradient>
+<linearGradient id="textGoldGrad" x1="0" y1="0" x2="500" y2="0" gradientUnits="userSpaceOnUse">
+<stop offset="0%" stop-color="#FFFFFF"/>
+<stop offset="40%" stop-color="#FDE047"/>
+<stop offset="80%" stop-color="#EAB308"/>
+<stop offset="100%" stop-color="#FFFFFF"/>
+</linearGradient>
+<linearGradient id="shieldGlow" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+<stop offset="0%" stop-color="rgba(234, 179, 8, 0.3)"/>
+<stop offset="100%" stop-color="rgba(10, 20, 47, 0.9)"/>
+</linearGradient>
+<linearGradient id="laserLineGrad" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
+<stop offset="0%" stop-color="transparent"/>
+<stop offset="25%" stop-color="#EAB308"/>
+<stop offset="50%" stop-color="#38BDF8"/>
+<stop offset="75%" stop-color="#EAB308"/>
+<stop offset="100%" stop-color="transparent"/>
+</linearGradient>
+</defs>
+</svg>
+</div>"""
 
-        <!-- Left Ornament: Timbangan Keadilan (Scales of Justice) -->
-        <g transform="translate(35, 25)">
-            <circle cx="50" cy="50" r="42" fill="url(#shieldGlow)" stroke="#FDE047" stroke-width="1.5"/>
-            <path d="M50 18 V78 M30 32 H70 M30 32 L18 58 H42 L30 32 M70 32 L58 58 H82 L70 32 M25 78 H75" stroke="#FDE047" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-            <circle cx="50" cy="18" r="4" fill="#38BDF8"/>
-        </g>
-
-        <!-- Center Text Content -->
-        <g transform="translate(145, 42)">
-            <text x="0" y="32" fill="url(#textGoldGrad)" font-family="'Playfair Display', serif" font-size="30" font-weight="800" letter-spacing="2">GOVSHIELD AI ENTERPRISE</text>
-            <text x="0" y="55" fill="#38BDF8" font-family="'Plus Jakarta Sans', sans-serif" font-size="13" font-weight="700" letter-spacing="1">EVIDENCE-FIRST LEGAL & REGULATORY DECISION INTELLIGENCE PLATFORM</text>
-            <text x="0" y="74" fill="#94A3B8" font-family="'Playfair Display', serif" font-size="11" font-style="italic">"Fiat justitia ruat caelum" — Statutory Hierarchy & Constitutional Compliance Verification</text>
-        </g>
-
-        <!-- Right Watermark: Constitutional Legal Articles SVG -->
-        <g transform="translate(930, 20)" opacity="0.85">
-            <rect x="0" y="0" width="230" height="110" rx="10" fill="rgba(10, 20, 47, 0.7)" stroke="rgba(234,179,8,0.4)" stroke-width="1.2"/>
-            <path d="M 20 25 H 210 M 20 45 H 170 M 20 65 H 190 M 20 85 H 140" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="0"/>
-            <text x="160" y="90" fill="#FDE047" font-family="'JetBrains Mono', monospace" font-size="12" font-weight="800">§ LEX SUPERIOR</text>
-        </g>
-
-        <!-- Bottom Glowing Gold Laser Line -->
-        <line x1="20" y1="148" x2="1180" y2="148" stroke="url(#laserLineGrad)" stroke-width="2.5" stroke-linecap="round"/>
-
-        <!-- SVG Gradients Definition -->
-        <defs>
-            <linearGradient id="bgGradient" x1="0" y1="0" x2="1200" y2="150" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stop-color="#080E21"/>
-                <stop offset="50%" stop-color="#0F1C3F"/>
-                <stop offset="100%" stop-color="#040711"/>
-            </linearGradient>
-            <linearGradient id="goldBorder" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stop-color="#EAB308" stop-opacity="0.8"/>
-                <stop offset="50%" stop-color="#38BDF8" stop-opacity="0.6"/>
-                <stop offset="100%" stop-color="#EAB308" stop-opacity="0.8"/>
-            </linearGradient>
-            <linearGradient id="textGoldGrad" x1="0" y1="0" x2="500" y2="0" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stop-color="#FFFFFF"/>
-                <stop offset="40%" stop-color="#FDE047"/>
-                <stop offset="80%" stop-color="#EAB308"/>
-                <stop offset="100%" stop-color="#FFFFFF"/>
-            </linearGradient>
-            <linearGradient id="shieldGlow" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stop-color="rgba(234, 179, 8, 0.3)"/>
-                <stop offset="100%" stop-color="rgba(10, 20, 47, 0.9)"/>
-            </linearGradient>
-            <linearGradient id="laserLineGrad" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stop-color="transparent"/>
-                <stop offset="25%" stop-color="#EAB308"/>
-                <stop offset="50%" stop-color="#38BDF8"/>
-                <stop offset="75%" stop-color="#EAB308"/>
-                <stop offset="100%" stop-color="transparent"/>
-            </linearGradient>
-        </defs>
-    </svg>
-</div>
-""", unsafe_allow_html=True)
+st.markdown(svg_banner_html, unsafe_allow_html=True)
 
 # ==============================================================================
-# 5. BUILT-IN GROUNDED KNOWLEDGE BASE (CONSTITUTIONAL & STATUTORY FRAMEWORK)
+# 5. BUILT-IN GROUNDED KNOWLEDGE BASE
 # ==============================================================================
 BUILTIN_KNOWLEDGE_BASE = """
 [BUILT-IN GROUNDED KNOWLEDGE BASE: CONSTITUTION & LEGAL HIERARCHY]
@@ -570,12 +475,10 @@ BUILTIN_KNOWLEDGE_BASE = """
    - Level 5: Presidential Regulations (Perpres)
    - Level 6: Provincial Regulations (Perda Provinsi)
    - Level 7: Regency/City Regulations (Perda Kabupaten/Kota)
-   - Internal/Autonomous Decrees (Circular Letters, Rector/Dean Decrees): Operational policies that MUST NOT contradict or restrict rights guaranteed by superior statutory laws.
 3. FUNDAMENTAL LEGAL PRINCIPLES & MAXIMS:
    - Lex Specialis Derogat Legi Generali: Specific laws override general statutory provisions.
    - Lex Superior Derogat Legi Inferiori: Higher ranking laws invalidate non-compliant lower ranking rules.
    - Lex Posterior Derogat Legi Priori: Later laws supersede earlier laws on the same subject matter.
-   - Non-Retroactivity Principle: Legal rules cannot be applied retroactively to detriment legal subjects.
 """
 
 # ==============================================================================
@@ -595,7 +498,6 @@ if "audit_logs" not in st.session_state:
     st.session_state["audit_logs"] = []
 
 def log_audit_event(event_type: str, details: str):
-    """Utility function to append security & operation logs."""
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_entry = {
         "timestamp": timestamp,
@@ -606,7 +508,6 @@ def log_audit_event(event_type: str, details: str):
     st.session_state["audit_logs"].append(log_entry)
 
 def parse_pdf_structure(reader: PdfReader) -> tuple[str, dict]:
-    """Parses PDF text while extracting structural metadata."""
     full_text = ""
     metadata = {"num_pages": len(reader.pages), "toc_detected": False}
     for idx, page in enumerate(reader.pages):
@@ -616,8 +517,7 @@ def parse_pdf_structure(reader: PdfReader) -> tuple[str, dict]:
     return full_text, metadata
 
 def compute_risk_score(result_json: dict) -> int:
-    """Computes legal risk score (0-100) based on analysis indicators."""
-    score = 15 # Base risk
+    score = 15
     if result_json.get("recommendation_status") == "NOT SUPPORTED":
         score += 65
     elif result_json.get("recommendation_status") == "REQUIRES HUMAN REVIEW":
@@ -630,15 +530,13 @@ def compute_risk_score(result_json: dict) -> int:
         score += 10
     return min(score, 100)
 
-# Initialize startup audit log
 if len(st.session_state["audit_logs"]) == 0:
     log_audit_event("SYSTEM_BOOT", "GovShield Enterprise AI Workspace initialized successfully.")
 
 # ==============================================================================
-# 7. PREMIUM SIDEBAR WITH SECURITY & REAL-TIME SYSTEM TELEMETRY
+# 7. PREMIUM SIDEBAR
 # ==============================================================================
 with st.sidebar:
-    # Security Badge
     st.markdown("""
     <div class="security-badge">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.2">
@@ -649,14 +547,11 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    # Real-time System Telemetry Header
     st.markdown("""
     <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2">
             <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
             <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
-            <line x1="6" y1="6" x2="6.01" y2="6"/>
-            <line x1="6" y1="18" x2="6.01" y2="18"/>
         </svg>
         <span style="font-weight:800; color:#38BDF8; font-size:0.82rem; letter-spacing:0.5px;">SYSTEM TELEMETRY</span>
     </div>
@@ -665,7 +560,6 @@ with st.sidebar:
     uptime = int(time.time() - st.session_state["boot_timestamp"])
     latency_ms = round((time.time() % 1) * 20 + 12, 1)
 
-    # Telemetry Widget Box
     st.markdown(f"""
     <div class="telemetry-card">
         <div class="telemetry-row">
@@ -689,7 +583,6 @@ with st.sidebar:
 
     st.markdown('<div style="height: 10px;"></div>', unsafe_allow_html=True)
 
-    # Regulatory Scope Selector
     st.markdown("""
     <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FDE047" stroke-width="2">
@@ -714,13 +607,11 @@ with st.sidebar:
 
     st.markdown('<div style="height: 12px;"></div>', unsafe_allow_html=True)
 
-    # Active Grounded Index Indicator
     st.markdown("""
     <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2">
             <circle cx="12" cy="12" r="10"/>
             <line x1="12" y1="16" x2="12" y2="12"/>
-            <line x1="12" y1="8" x2="12.01" y2="8"/>
         </svg>
         <span style="font-weight:800; color:#38BDF8; font-size:0.82rem; letter-spacing:0.5px;">GROUNDED INDEX ACTIVE</span>
     </div>
@@ -815,7 +706,6 @@ else:
     st.session_state["pdf_text"] = ""
     st.session_state["pdf_name"] = ""
 
-# Policy Inquiry Box
 st.markdown("""
 <div class="ai-search-frame">
     <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -926,9 +816,6 @@ if st.session_state["analysis_result"]:
     result = st.session_state["analysis_result"]
     risk_score = compute_risk_score(result)
     
-    st.markdown('<div class="lexis-divider" style="height: 1px; background: linear-gradient(90deg, #38BDF8, #FDE047, transparent); margin: 20px 0;"></div>', unsafe_allow_html=True)
-    
-    # Executive Header & Risk Score Visualizer
     col_dash_title, col_dash_risk = st.columns([3, 1])
     with col_dash_title:
         st.markdown("""
@@ -948,7 +835,6 @@ if st.session_state["analysis_result"]:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Status Banner
     status = str(result.get("recommendation_status", "REQUIRES HUMAN REVIEW"))
     summary = html.escape(str(result.get("recommendation_summary", "")))
 
@@ -961,7 +847,6 @@ if st.session_state["analysis_result"]:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Multi-Tab Enterprise Navigation
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📊 Executive Summary & Evidence", 
         "⚖️ Statutory Structure & Reasoning",
@@ -975,7 +860,6 @@ if st.session_state["analysis_result"]:
     reasoning = html.escape(str(result.get('reasoning_conclusion', '-')))
     review_note = html.escape(str(result.get('review_note', 'N/A')))
 
-    # TAB 1: EXECUTIVE SUMMARY
     with tab1:
         col_t1_1, col_t1_2 = st.columns(2, gap="medium")
         with col_t1_1:
@@ -996,7 +880,6 @@ if st.session_state["analysis_result"]:
             </div>
             """, unsafe_allow_html=True)
 
-    # TAB 2: STATUTORY REASONING
     with tab2:
         ra = result.get("rule_analysis", {})
         gen_prov = html.escape(str(ra.get('general_provision', '-')))
@@ -1028,7 +911,6 @@ if st.session_state["analysis_result"]:
         </div>
         """, unsafe_allow_html=True)
 
-    # TAB 3: INTERACTIVE Q&A ASSISTANT
     with tab3:
         st.markdown("### 💬 Interactive Legal Q&A Assistant")
         st.caption("Ask questions about this legal determination, uploaded document clauses, or relevant statutory rules.")
@@ -1062,7 +944,6 @@ if st.session_state["analysis_result"]:
                     except Exception as err:
                         st.error(f"Chat error: {err}")
 
-    # TAB 4: DOWNLOAD LEGAL REPORT
     with tab4:
         st.markdown("### 📥 Download Formal Legal Determination Brief")
         report_text = f"""================================================================================
@@ -1104,7 +985,6 @@ Generated automatically by GovShield Enterprise AI Engine v3.0
             mime="text/plain"
         )
 
-    # TAB 5: SYSTEM AUDIT LOGS
     with tab5:
         st.markdown("### 🛡️ Real-Time Audit Log & Security Telemetry")
         st.caption("Immutable session log records for compliance verification and audit trails.")
