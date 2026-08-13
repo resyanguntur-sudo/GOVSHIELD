@@ -15,25 +15,25 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# 2. BACA DARI SECRETS.TOML (DENGAN SAFE CHECK)
+# 2. READ API KEYS & SECRETS
 # ---------------------------------------------------------
 try:
     GROQ_KEY = st.secrets["GROQ_API_KEY"]
     BASE_URL = st.secrets.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
 except KeyError:
-    st.error("❌ Key 'GROQ_API_KEY' tidak ditemukan di dalam file .streamlit/secrets.toml!")
+    st.error("❌ Key 'GROQ_API_KEY' was not found in .streamlit/secrets.toml!")
     st.stop()
 except Exception as e:
-    st.error(f"❌ Terjadi kesalahan membaca secrets.toml: {e}")
+    st.error(f"❌ Error reading secrets.toml: {e}")
     st.stop()
 
 # ---------------------------------------------------------
-# 3. UNIVERSAL THEME STYLES (BACKGROUND SILHOUETTE + TECH DECO)
+# 3. UNIVERSAL THEME STYLES (ENTERPRISE DARK THEME + ANIMATIONS)
 # ---------------------------------------------------------
 st.markdown("""<style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* HEADER & TOMBOL NAVIGATOR SIDEBAR */
+/* HEADER & SIDEBAR NAVIGATION BUTTONS */
 header[data-testid="stHeader"] {
     background: transparent !important;
     z-index: 99999 !important;
@@ -64,7 +64,7 @@ button[data-testid="baseButton-headerNoPadding"]:hover {
     z-index: 2;
 }
 
-/* BASE BACKGROUND DENGAN SILUET HUKUM BERPADU DENGAN GLOW TEKNOLOGI */
+/* BASE BACKGROUND WITH LEGAL SILHOUETTE & TECH GLOW */
 .stApp {
     background-color: #040711 !important;
     background-image: 
@@ -379,6 +379,30 @@ div.stButton > button {
     border-radius: 10px;
     font-weight: 700;
 }
+
+/* ROBOT WELCOME CARD STYLES */
+.robot-welcome-card {
+    background: linear-gradient(135deg, rgba(10, 20, 47, 0.95) 0%, rgba(15, 28, 63, 0.95) 100%);
+    border: 1.5px solid #FDE047;
+    border-radius: 20px;
+    padding: 30px;
+    text-align: center;
+    box-shadow: 0 0 35px rgba(234, 179, 8, 0.25), inset 0 0 15px rgba(56, 189, 248, 0.15);
+    margin-bottom: 25px;
+}
+
+@keyframes floatRobot {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+}
+
+.robot-avatar {
+    width: 90px;
+    height: 90px;
+    margin: 0 auto 15px auto;
+    animation: floatRobot 3.5s ease-in-out infinite;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -397,7 +421,7 @@ st.markdown("""<div class="floating-topleft-badge">
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 4. HEADER TASKBAR DENGAN LOGO TAMENG EMAS + HUKUM
+# 4. HEADER TASKBAR WITH GOLD SHIELD & LEGAL ICON
 # ---------------------------------------------------------
 st.markdown("""<div class="header-container">
 <div style="display: flex; align-items: center; gap: 16px;">
@@ -421,12 +445,12 @@ st.markdown("""<div class="header-container">
 <div>
 <h1 class="lexis-title">GOVSHIELD AI</h1>
 <div class="lexis-subtitle">Evidence-First Legal &amp; Regulatory Intelligence Engine</div>
-<div class="lexis-maxim">"Fiat justitia ruat caelum" — Keadilan harus ditegakkan meski langit runtuh</div>
+<div class="lexis-maxim">"Fiat justitia ruat caelum" — Let justice be done though the heavens fall</div>
 </div>
 </div>
 <div class="top-right-badge">
-<div class="brand-name">🛡️ GOVSHIELD AI v2.5</div>
-<div class="brand-desc">Enterprise Legal Analysis System</div>
+<div class="brand-name">🛡️ GOVSHIELD AI v3.0</div>
+<div class="brand-desc">Global Legal Analysis System</div>
 </div>
 </div>
 <div class="letterhead-divider">
@@ -434,67 +458,120 @@ st.markdown("""<div class="header-container">
 </div>""", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 5. KNOWLEDGE BASE
+# 5. BUILT-IN GROUNDED KNOWLEDGE BASE (ENGLISH & INDONESIAN LAW)
 # ---------------------------------------------------------
 BUILTIN_KNOWLEDGE_BASE = """
-[BUILT-IN KNOWLEDGE BASE: UUD NR1 1945 & HIERARKI HUKUM INDONESIA]
-1. UUD 1945 (Pasal 1 s/d Pasal 37 beserta Amandemen I, II, III, IV):
-   - Indonesia adalah negara hukum (Pasal 1 ayat 3).
-   - Hak Asasi Manusia, Hak Pendidikan (Pasal 31), Kebijakan Pemerintahan, Hak Pekerjaan, Kebijakan Hukum Organisasi.
-   - Hak atas Kepastian Hukum yang Adil dan Perlakuan Sama di Hadapan Hukum (Pasal 28D ayat 1).
-2. HIERARKI PERATURAN PERUNDANG-UNDANGAN (UU No. 12 Tahun 2011 jo UU No. 13 Tahun 2022):
-   - UUD 1945 > TAP MPR > UU/Perppu > Peraturan Pemerintah (PP) > Peraturan Presiden (Perpres) > Perda Provinsi > Perda Kabupaten/Kota.
-   - Aturan Internal (Surat Edaran/Keputusan): Merupakan aturan pelaksanaan/operasional yang TIDAK BOLEH bertentangan dengan peraturan perundang-undangan di atasnya.
-3. AZAS-AZAS HUKUM REGULASI:
-   - Lex Specialis Derogat Legi Generali: Hukum yang khusus mengesampingkan hukum yang umum.
-   - Lex Superior Derogat Legi Inferiori: Hukum yang lebih tinggi mengesampingkan hukum yang rendah.
+[BUILT-IN GROUNDED KNOWLEDGE BASE: CONSTITUTION & LEGAL HIERARCHY]
+1. 1945 CONSTITUTION OF THE REPUBLIC OF INDONESIA (UUD 1945 - Amendments I-IV):
+   - Article 1 (3): Indonesia is a constitutional state governed by the rule of law.
+   - Article 28D (1): Guarantee of fair legal certainty and equal treatment before the law.
+   - Article 31: Human Rights & Right to Education.
+   - Public Policy & Governance Provisions.
+2. STATUTORY HIERARCHY (Act No. 12/2011 & Act No. 13/2022):
+   - 1945 Constitution (UUD 1945) > People's Consultative Assembly Resolutions (TAP MPR) > Acts/Laws (UU) / Government Regulations in Lieu of Law (Perppu) > Government Regulations (PP) > Presidential Regulations (Perpres) > Provincial Decrees > Regency/City Regulations.
+   - Internal Policies / Institutional Regulations (Circular Letters, Rector/Dean Decrees): Operational rules that MUST NOT contradict superior statutory laws.
+3. FUNDAMENTAL LEGAL PRINCIPLES:
+   - Lex Specialis Derogat Legi Generali: Specific laws override general laws.
+   - Lex Superior Derogat Legi Inferiori: Higher ranking laws override lower ranking laws.
 """
 
 # ---------------------------------------------------------
-# 6. SESSION STATE
+# 6. SESSION STATE INITIALIZATION
 # ---------------------------------------------------------
 if "pdf_text" not in st.session_state:
     st.session_state["pdf_text"] = ""
 if "pdf_name" not in st.session_state:
     st.session_state["pdf_name"] = ""
+if "robot_dismissed" not in st.session_state:
+    st.session_state["robot_dismissed"] = False
 
 # ---------------------------------------------------------
-# 7. SIDEBAR CONFIG
+# 7. SIDEBAR CONFIGURATION (MULTI-TIER SCOPE SELECTOR)
 # ---------------------------------------------------------
 with st.sidebar:
     st.markdown("""<div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; padding: 12px; border-radius: 10px; margin-bottom: 16px;">
 <b style="color:#34D399; font-size:0.88rem;">⚡ SECRETS CONNECTED</b><br>
-<span style="font-size:0.75rem; color:#94A3B8;">API Key Terbaca dari secrets.toml</span>
+<span style="font-size:0.75rem; color:#94A3B8;">GROQ API Key Authenticated</span>
 </div>""", unsafe_allow_html=True)
 
-    st.markdown("""<div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+    st.markdown("""<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EAB308" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-<span style="font-weight:700; color:#EAB308; font-size:0.88rem;">GROUNDED KNOWLEDGE</span>
+<span style="font-weight:700; color:#EAB308; font-size:0.88rem;">REGULATORY SCOPE SELECTOR</span>
+</div>""", unsafe_allow_html=True)
+
+    reg_scope = st.selectbox(
+        "Choose Analysis Scope",
+        [
+            "🏛️ Macro (National Level - UUD 1945 & Acts)",
+            "🎓 Meso (Institutional / Campus Policy)",
+            "⚖️ Harmonization (National vs Local Alignment)"
+        ],
+        index=2
+    )
+
+    st.markdown('<div class="lexis-divider"></div>', unsafe_allow_html=True)
+
+    st.markdown("""<div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+<span style="font-weight:700; color:#38BDF8; font-size:0.88rem;">GROUNDED INDEX ACTIVE</span>
 </div>""", unsafe_allow_html=True)
 
     st.markdown("""<div style="background: #0A142F; border-left: 3px solid #10B981; padding: 10px; border-radius: 6px; margin-bottom: 8px; font-size: 0.85rem;">
-<b style="color:#FFFFFF;">§ UUD 1945 &amp; Amandemen I-IV</b><br><span style="color:#94A3B8;">Active Index</span>
+<b style="color:#FFFFFF;">§ 1945 Constitution (UUD)</b><br><span style="color:#94A3B8;">Amendments I-IV Indexed</span>
 </div>
 <div style="background: #0A142F; border-left: 3px solid #10B981; padding: 10px; border-radius: 6px; font-size: 0.85rem;">
-<b style="color:#FFFFFF;">§ Hierarki Hukum Indonesia</b><br><span style="color:#94A3B8;">UU 12/2011 jo UU 13/2022</span>
+<b style="color:#FFFFFF;">§ Statutory Hierarchy</b><br><span style="color:#94A3B8;">Act 12/2011 jo Act 13/2022</span>
 </div>""", unsafe_allow_html=True)
 
     st.markdown('<div class="lexis-divider"></div>', unsafe_allow_html=True)
-    st.caption("🛡️ **GovShield Intelligence Engine**")
+    st.caption("🛡️ **GovShield Intelligence Engine v3.0**")
 
 # ---------------------------------------------------------
-# 8. INPUT AREA
+# 8. ROBOT WELCOME OVERLAY (CAN BE DISMISSED)
+# ---------------------------------------------------------
+if not st.session_state["robot_dismissed"]:
+    st.markdown("""
+    <div class="robot-welcome-card">
+        <div class="robot-avatar">
+            <svg width="85" height="85" viewBox="0 0 24 24" fill="none" stroke="#FDE047" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="10" rx="2" fill="#0A142F"/>
+                <circle cx="12" cy="5" r="2" fill="#38BDF8"/>
+                <path d="M12 7v4"/>
+                <line x1="8" y1="15" x2="8" y2="15.01" stroke="#34D399" stroke-width="3"/>
+                <line x1="16" y1="15" x2="16" y2="15.01" stroke="#34D399" stroke-width="3"/>
+                <path d="M9 18h6" stroke="#FDE047" stroke-width="1.5"/>
+                <path d="M1 15h2"/>
+                <path d="M21 15h2"/>
+            </svg>
+        </div>
+        <h2 style="font-family:'Playfair Display', serif; color:#FDE047; margin:0 0 8px 0;">Welcome to GovShield AI Legal Assistant</h2>
+        <p style="color:#CBD5E1; font-size:0.95rem; max-width:650px; margin:0 auto 18px auto; line-height:1.6;">
+            I am your automated <b>Legal & Policy Intelligence Assistant</b>. I analyze legal cases, institutional regulations, and national constitutions using evidence-first grounded reasoning.
+        </p>
+        <p style="color:#38BDF8; font-size:0.85rem; font-weight:600; margin-bottom:0;">
+            👇 Upload a document or type your inquiry below to launch the analysis workspace!
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button("🚀 LAUNCH LEGAL ANALYSIS WORKSPACE"):
+        st.session_state["robot_dismissed"] = True
+        st.rerun()
+
+# ---------------------------------------------------------
+# 9. INPUT AREA (PDF UPLOAD + QUERY INPUT)
 # ---------------------------------------------------------
 st.markdown("""<div class="custom-label">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EAB308" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-📄 OPSIONAL: DOKUMEN KHUSUS (UPLOAD PDF REGULASI / KONTRAK)
+📄 OPTIONAL: SPECIFIC POLICY / PDF DOCUMENT ATTACHMENT
 </div>""", unsafe_allow_html=True)
 
 uploaded_file = st.file_uploader(
-    "Upload Dokumen PDF", type=["pdf"], label_visibility="collapsed"
+    "Upload Policy or Contract PDF", type=["pdf"], label_visibility="collapsed"
 )
 
 if uploaded_file is not None:
+    st.session_state["robot_dismissed"] = True
     if st.session_state["pdf_name"] != uploaded_file.name:
         try:
             reader = PdfReader(uploaded_file)
@@ -507,22 +584,22 @@ if uploaded_file is not None:
             st.session_state["pdf_text"] = extracted_text
             st.session_state["pdf_name"] = uploaded_file.name
         except Exception as err:
-            st.error(f"Gagal memproses file PDF: {err}")
+            st.error(f"Failed to process PDF document: {err}")
 
     st.markdown(f"""<div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; padding: 8px 14px; border-radius: 8px; font-size: 0.85rem; color: #34D399; margin-top: 4px; margin-bottom: 12px; display:flex; align-items:center; gap:8px;">
-<span style="font-weight:700;">✓ Dokumen Khusus Aktif:</span> {html.escape(st.session_state['pdf_name'])}
+<span style="font-weight:700;">✓ Active Custom Document:</span> {html.escape(st.session_state['pdf_name'])}
 </div>""", unsafe_allow_html=True)
 else:
     st.session_state["pdf_text"] = ""
     st.session_state["pdf_name"] = ""
     st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
-# AREA PENCARIAN & KASUS
+# SEARCH AND QUERY FRAME
 st.markdown("""<div class="ai-search-frame">
 <div style="display:flex; justify-content:space-between; align-items:center;">
 <div class="custom-label" style="margin-bottom: 0 !important;">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-❓ PERTANYAAN / SKENARIO KASUS / INSTRUKSI ANALISIS (WAJIB)
+❓ POLICY INQUIRY / CASE SCENARIO / LEGAL QUERY (REQUIRED)
 </div>
 <div style="font-size: 0.78rem; color: #38BDF8; font-weight:600; display:flex; align-items:center;">
 <span class="pulse-dot"></span> AI REASONING READY
@@ -531,63 +608,68 @@ st.markdown("""<div class="ai-search-frame">
 </div>""", unsafe_allow_html=True)
 
 user_query = st.text_area(
-    "Ketik skenario hukum",
-    placeholder="Ketik skenario kasus, analisis pasal dari PDF, atau instruksi analisis hukum di sini...",
+    "Type your legal inquiry",
+    placeholder="Type your policy scenario, case details, or regulatory questions here...",
     height=140,
     label_visibility="collapsed",
 )
 
+if user_query.strip():
+    st.session_state["robot_dismissed"] = True
+
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 9. EXECUTE BUTTON & LEGAL AI REASONING
+# 10. EXECUTE BUTTON & AI REASONING LOGIC
 # ---------------------------------------------------------
-if st.button("PROSES ANALISIS HUKUM (RUN GOVSHIELD AI)"):
+if st.button("RUN GOVSHIELD LEGAL INTELLIGENCE ANALYSIS"):
+    st.session_state["robot_dismissed"] = True
     if not user_query.strip():
-        st.warning("⚠️ Mohon ketik skenario kasus atau instruksi analisis hukum kamu terlebih dahulu.")
+        st.warning("⚠️ Please enter a legal inquiry or case scenario before proceeding.")
     else:
-        with st.spinner("Memproses Analisis Lexis Decision Intelligence..."):
+        with st.spinner("Analyzing legal hierarchy, cross-referencing provisions, and generating evidence-first reasoning..."):
             try:
-                combined_context = f"{BUILTIN_KNOWLEDGE_BASE}\n"
+                combined_context = f"{BUILTIN_KNOWLEDGE_BASE}\n[SELECTED REGULATORY SCOPE]: {reg_scope}\n"
                 if st.session_state["pdf_text"]:
-                    combined_context += f"\n[DOKUMEN SPESIFIK USER / UPLOAD]:\n{st.session_state['pdf_text'][:14000]}\n"
+                    combined_context += f"\n[ATTACHED USER DOCUMENT / PDF]:\n{st.session_state['pdf_text'][:14000]}\n"
 
                 client = OpenAI(api_key=GROQ_KEY, base_url=BASE_URL)
 
                 system_prompt = """
-Anda adalah GOVSHIELD AI, sistem intelligence analisis regulasi berbasis bukti (Evidence-First Legal Decision Support System).
+You are GOVSHIELD AI, an evidence-first enterprise Legal & Regulatory Intelligence Assistant.
 
-PRINSIP WAJIB:
-1. Analisis hirarki hukum (UUD 1945 vs Aturan Khusus/Dokumen Upload) dan terapkan azas "Lex Specialis Derogat Legi Generali".
-2. Bedakan Aturan Umum (General Provision) dan Aturan Khusus/Pengecualian (Specific Provision/Exception).
-3. Tunjukkan EVIDENCE berupa kutipan asli/nomor pasal/bab dari UUD 1945 maupun Dokumen PDF.
-4. JIKA PERTANYAAN TIDAK MEMILIKI BUKTI ATAU PASAL TERKAIT, JAWAB STATUS SEBAGAI "REQUIRES HUMAN REVIEW" dan sebutkan bahwa pasal tidak ditemukan. JANGAN MENGARANG PASAL.
+CORE MANDATES:
+1. Analyze legal hierarchy (1945 Constitution / UUD 1945 vs Statutory Laws vs Institutional/Campus Decrees) based on the user's selected Regulatory Scope.
+2. Apply the legal principle "Lex Specialis Derogat Legi Generali" (Specific laws prevail over general laws) and "Lex Superior Derogat Legi Inferiori" (Higher ranking laws override lower laws).
+3. Distinguish clearly between General Provisions and Specific Provisions/Exceptions.
+4. Provide direct EVIDENCE quotes / clause citations from the 1945 Constitution (UUD 1945) or the uploaded PDF document.
+5. IF NO EVIDENCE OR DIRECT CLAUSES EXIST, SET STATUS AS "REQUIRES HUMAN REVIEW" and explicitly state that no corresponding clauses were found. DO NOT HALLUCINATE OR INVENT ARTICLES.
+6. RESPOND ENTIRELY IN ENGLISH.
 
-FORMAT KELUARAN JSON:
+OUTPUT FORMAT (JSON ONLY):
 {
   "recommendation_status": "SUPPORTED" | "NOT SUPPORTED" | "REQUIRES HUMAN REVIEW",
-  "recommendation_summary": "Ringkasan keputusan dalam Bahasa Indonesia",
-  "applicable_rule": "Ketentuan akhir yang paling berlaku berdasarkan prinsip Lex Specialis atau Konstitusi",
-  "evidence": "Kutipan teks asli/pasal/bab dari dokumen sebagai bukti kuat",
+  "recommendation_summary": "Executive summary of the legal determination in English",
+  "applicable_rule": "The final governing legal rule or supreme constitutional principle applicable",
+  "evidence": "Direct textual quote, clause, or article reference serving as legal evidence",
   "rule_analysis": {
-    "general_provision": "Ketentuan umum yang ditemukan",
-    "specific_provision": "Ketentuan khusus/pengecualian yang ditemukan",
+    "general_provision": "General rule or statutory provision identified",
+    "specific_provision": "Specific rule, exception, or institutional decree identified",
     "exception_detected": true | false,
     "unresolved_conflict": true | false
   },
-  "reasoning_conclusion": "Analisis logis hukum secara rinci",
-  "review_note": "Catatan kritis analis hukum manusia"
+  "reasoning_conclusion": "Detailed step-by-step legal reasoning and justification",
+  "review_note": "Critical analysis note or advice for human legal counsel"
 }
-Jawab HANYA JSON.
 """
 
                 user_prompt = f"""
-KUMPULAN REGULASI & DOKUMEN:
+GROUNDED KNOWLEDGE & DOCUMENTS:
 ---
 {combined_context}
 ---
 
-PERTANYAAN / KASUS:
+INQUIRY / CASE SCENARIO:
 {user_query}
 """
 
@@ -606,11 +688,11 @@ PERTANYAAN / KASUS:
                 result = json.loads(response.choices[0].message.content)
 
                 # ---------------------------------------------------------
-                # 10. OUTPUT DASHBOARD
+                # 11. OUTPUT DASHBOARD
                 # ---------------------------------------------------------
                 st.markdown('<div class="lexis-divider"></div>', unsafe_allow_html=True)
                 st.markdown("""<div style="font-size:1.15rem; font-weight:800; color:#38BDF8; margin-bottom:16px; letter-spacing:1px;">
-⚖️ HASIL ANALISIS: GOVSHIELD INTELLIGENCE
+⚖️ GOVSHIELD INTELLIGENCE ANALYSIS DASHBOARD
 </div>""", unsafe_allow_html=True)
 
                 status = str(result.get("recommendation_status", "REQUIRES HUMAN REVIEW"))
@@ -621,54 +703,60 @@ PERTANYAAN / KASUS:
                 elif status == "NOT SUPPORTED":
                     st.markdown(f'<div class="badge-rejected">❌ RECOMMENDATION: NOT SUPPORTED — {summary}</div>', unsafe_allow_html=True)
                 else:
-                    st.markdown(f'<div class="badge-review">⚠️ STATUS: REQUIRES HUMAN REVIEW — Bukti Kurang Spesifik</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="badge-review">⚠️ STATUS: REQUIRES HUMAN REVIEW — Insufficient Direct Evidence</div>', unsafe_allow_html=True)
 
                 st.markdown("<br>", unsafe_allow_html=True)
-                r_col1, r_col2 = st.columns(2, gap="medium")
+
+                # TABULAR DISPLAY FOR DEEP DIVE
+                tab1, tab2 = st.tabs(["📊 Executive Summary & Evidence", "⚖️ Statutory Structure & Legal Reasoning"])
 
                 applicable_rule = html.escape(str(result.get('applicable_rule', '-')))
-                evidence_text = html.escape(str(result.get('evidence', 'Tidak ada bukti langsung')))
+                evidence_text = html.escape(str(result.get('evidence', 'No direct text excerpt available')))
                 reasoning = html.escape(str(result.get('reasoning_conclusion', '-')))
                 review_note = html.escape(str(result.get('review_note', 'N/A')))
 
-                with r_col1:
-                    st.markdown(f"""<div class="lexis-card-gold">
-<div class="card-title-gold">⚖️ APPLICABLE RULE (ATURAN BERLAKU)</div>
+                with tab1:
+                    r_col1, r_col2 = st.columns(2, gap="medium")
+                    with r_col1:
+                        st.markdown(f"""<div class="lexis-card-gold">
+<div class="card-title-gold">⚖️ GOVERNING / APPLICABLE RULE</div>
 <div style="font-size:0.95rem; line-height:1.6; color:#F1F5F9;">{applicable_rule}</div>
-</div>
-<div class="lexis-card-cyan">
-<div class="card-title-cyan">📌 BUKTI VALID (EVIDENCE EXCERPT)</div>
+</div>""", unsafe_allow_html=True)
+
+                    with r_col2:
+                        st.markdown(f"""<div class="lexis-card-cyan">
+<div class="card-title-cyan">📌 CITATION &amp; DIRECT LEGAL EVIDENCE EXCERPT</div>
 <div style="font-family:'JetBrains Mono', monospace; font-size:0.85rem; color:#34D399; background:#070C1A; padding:12px; border-radius:8px; border: 1px solid rgba(56, 189, 248, 0.25);">
 {evidence_text}
 </div>
 </div>""", unsafe_allow_html=True)
 
-                with r_col2:
+                with tab2:
                     ra = result.get("rule_analysis", {})
                     gen_prov = html.escape(str(ra.get('general_provision', '-')))
                     spec_prov = html.escape(str(ra.get('specific_provision', '-')))
-                    exc_str = '<span style="color:#34D399; font-weight:700;">YA</span>' if ra.get('exception_detected') else '<span style="color:#F87171;">TIDAK</span>'
-                    conf_str = '<span style="color:#FDE047; font-weight:700;">YA</span>' if ra.get('unresolved_conflict') else '<span style="color:#34D399;">TIDAK</span>'
+                    exc_str = '<span style="color:#34D399; font-weight:700;">YES</span>' if ra.get('exception_detected') else '<span style="color:#F87171;">NO</span>'
+                    conf_str = '<span style="color:#FDE047; font-weight:700;">YES</span>' if ra.get('unresolved_conflict') else '<span style="color:#34D399;">NO</span>'
 
                     st.markdown(f"""<div class="lexis-card-cyan">
-<div class="card-title-cyan">📊 ANALISIS STRUKTUR REGULASI</div>
+<div class="card-title-cyan">📊 REGULATORY HIERARCHY &amp; NORMA ANALYSIS</div>
 <div style="font-size:0.9rem; line-height:1.8; color:#F1F5F9;">
-<div><b>Ketentuan Umum:</b> {gen_prov}</div>
-<div><b>Ketentuan Khusus:</b> {spec_prov}</div>
-<div><b>Pengecualian Terdeteksi:</b> {exc_str}</div>
-<div><b>Konflik Norma:</b> {conf_str}</div>
+<div><b>General Provision:</b> {gen_prov}</div>
+<div><b>Specific Provision / Exception:</b> {spec_prov}</div>
+<div><b>Exception Detected:</b> {exc_str}</div>
+<div><b>Normative Conflict Detected:</b> {conf_str}</div>
 </div>
 </div>""", unsafe_allow_html=True)
 
-                st.markdown(f"""<div class="lexis-card-gold">
-<div class="card-title-gold">📝 RASIONALISASI &amp; KESIMPULAN HUKUM</div>
+                    st.markdown(f"""<div class="lexis-card-gold">
+<div class="card-title-gold">📝 DETAILED LEGAL RATIONALE &amp; CONCLUSION</div>
 <div style="font-size:0.95rem; line-height:1.6; color:#E2E8F0;">
 {reasoning}
 </div>
 <div style="font-size:0.85rem; color:#94A3B8; margin-top:14px; border-top:1px solid rgba(234, 179, 8, 0.2); padding-top:8px;">
-💡 <b>Catatan Analis:</b> {review_note}
+💡 <b>Legal Counsel Advisory Note:</b> {review_note}
 </div>
 </div>""", unsafe_allow_html=True)
 
             except Exception as e:
-                st.error(f"Terjadi kesalahan teknis: {e}")
+                st.error(f"Technical Analysis Error: {e}")
