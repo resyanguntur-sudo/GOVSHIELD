@@ -1,72 +1,51 @@
 import html
 import json
+import os
+import re
+import time
+import base64
 import streamlit as st
 from openai import OpenAI
 from pypdf import PdfReader
 
 # ---------------------------------------------------------
-# 1. PAGE CONFIG
+# 1. PAGE CONFIGURATION & METADATA
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="GOVSHIELD AI | Legal Decision Intelligence",
+    page_title="GOVSHIELD AI | Legal Decision Intelligence Platform",
     page_icon="⚖️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 # ---------------------------------------------------------
-# 2. READ API KEYS & SECRETS
+# 2. API KEYS & SECRETS MANAGEMENT
 # ---------------------------------------------------------
 try:
     GROQ_KEY = st.secrets["GROQ_API_KEY"]
     BASE_URL = st.secrets.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
 except KeyError:
-    st.error("❌ Key 'GROQ_API_KEY' was not found in .streamlit/secrets.toml!")
+    st.error("❌ Critical Secret Missing: 'GROQ_API_KEY' was not found in .streamlit/secrets.toml!")
     st.stop()
 except Exception as e:
-    st.error(f"❌ Error reading secrets.toml: {e}")
+    st.error(f"❌ Error reading .streamlit/secrets.toml file: {e}")
     st.stop()
 
 # ---------------------------------------------------------
-# 3. UNIVERSAL THEME STYLES & OVERRIDES (FIX DARK DROPDOWN & WHITE CHAT BOX)
+# 3. ABSOLUTE DARK THEME & CSS OVERRIDES (ZERO WHITE LEAKS)
 # ---------------------------------------------------------
 st.markdown("""<style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-/* HEADER & SIDEBAR NAVIGATION BUTTONS */
-header[data-testid="stHeader"] {
-    background: transparent !important;
-    z-index: 99999 !important;
-}
-
-button[data-testid="stSidebarCollapseButton"], 
-button[data-testid="baseButton-headerNoPadding"] {
-    background-color: rgba(10, 20, 47, 0.9) !important;
-    border: 1px solid rgba(234, 179, 8, 0.6) !important;
-    color: #FDE047 !important;
-    border-radius: 8px !important;
-    box-shadow: 0 0 12px rgba(234, 179, 8, 0.25) !important;
-}
-
-button[data-testid="stSidebarCollapseButton"]:hover, 
-button[data-testid="baseButton-headerNoPadding"]:hover {
-    border-color: #38BDF8 !important;
-    background-color: #0D1B3E !important;
-}
-
-.block-container {
-    padding-top: 2rem !important;
-    padding-bottom: 2rem !important;
-    padding-left: 2rem !important;
-    padding-right: 2rem !important;
-    max-width: 100% !important;
-    position: relative;
-    z-index: 2;
-}
-
-/* BASE BACKGROUND WITH LEGAL SILHOUETTE & TECH GLOW */
-.stApp {
+/* GLOBAL RESET & ROOT BACKGROUND */
+html, body, [data-testid="stAppViewContainer"], .stApp {
     background-color: #040711 !important;
+    color: #F1F5F9 !important;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+/* BACKGROUND SVG PATTERN & TECH GLOW */
+.stApp {
     background-image: 
         url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 24 24" fill="none" stroke="rgba(234,179,8,0.035)" stroke-width="0.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M19 7l2 8H17l2-8z"/><path d="M5 7l2 8H3l2-8z"/><path d="M9 21h6"/><path d="M4 21h16"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>'),
         radial-gradient(circle at 12% -8%, rgba(234, 179, 8, 0.16) 0%, transparent 40%),
@@ -78,7 +57,41 @@ button[data-testid="baseButton-headerNoPadding"]:hover {
     background-attachment: fixed !important;
 }
 
-/* SIDEBAR STYLING */
+/* HEADER & SIDEBAR BUTTON FIXES */
+header[data-testid="stHeader"] {
+    background: transparent !important;
+    z-index: 99999 !important;
+}
+
+button[data-testid="stSidebarCollapseButton"], 
+button[data-testid="baseButton-headerNoPadding"],
+button[aria-label="Close"] {
+    background-color: rgba(10, 20, 47, 0.9) !important;
+    border: 1px solid rgba(234, 179, 8, 0.6) !important;
+    color: #FDE047 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 0 12px rgba(234, 179, 8, 0.25) !important;
+}
+
+button[data-testid="stSidebarCollapseButton"]:hover, 
+button[data-testid="baseButton-headerNoPadding"]:hover {
+    border-color: #38BDF8 !important;
+    background-color: #0D1B3E !important;
+    color: #38BDF8 !important;
+}
+
+/* MAIN CONTAINER PADDING */
+.block-container {
+    padding-top: 1.8rem !important;
+    padding-bottom: 3rem !important;
+    padding-left: 2.2rem !important;
+    padding-right: 2.2rem !important;
+    max-width: 100% !important;
+    position: relative;
+    z-index: 2;
+}
+
+/* SIDEBAR DARK OVERRIDE */
 section[data-testid="stSidebar"] {
     background-color: #0A1228 !important;
     border-right: 1px solid rgba(56, 189, 248, 0.25) !important;
@@ -88,12 +101,22 @@ section[data-testid="stSidebar"] * {
     color: #F1F5F9 !important;
 }
 
-/* FIX DROPDOWN & SELECTBOX DARK TEXT BUG */
+/* FIX ALL SELECTBOXES / DROPDOWNS WHITE BACKGROUND LEAKS */
+div[data-baseweb="select"] {
+    background-color: #0A142F !important;
+    border-radius: 10px !important;
+}
+
 div[data-baseweb="select"] > div {
-    background-color: #0F1C3F !important;
-    border: 1px solid rgba(56, 189, 248, 0.5) !important;
+    background-color: #0A142F !important;
+    border: 1.5px solid rgba(56, 189, 248, 0.4) !important;
     color: #F1F5F9 !important;
-    border-radius: 8px !important;
+    border-radius: 10px !important;
+}
+
+div[data-baseweb="select"] > div:hover {
+    border-color: #FDE047 !important;
+    box-shadow: 0 0 12px rgba(253, 224, 71, 0.25) !important;
 }
 
 div[data-baseweb="select"] * {
@@ -101,41 +124,125 @@ div[data-baseweb="select"] * {
     fill: #F1F5F9 !important;
 }
 
-ul[role="listbox"] {
+/* DROPDOWN MENU / POPOVER FLOATING LIST */
+div[data-baseweb="popover"], ul[role="listbox"], div[role="listbox"] {
     background-color: #0A142F !important;
     border: 1px solid #38BDF8 !important;
+    border-radius: 10px !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
 }
 
-ul[role="listbox"] li {
+ul[role="listbox"] li, div[role="listbox"] div {
     background-color: #0A142F !important;
     color: #F1F5F9 !important;
 }
 
-ul[role="listbox"] li:hover {
+ul[role="listbox"] li[aria-selected="true"], ul[role="listbox"] li:hover {
     background-color: #1E293B !important;
     color: #38BDF8 !important;
 }
 
-/* FIX CHAT INPUT WHITE CONTAINER BUG */
+/* FIX TEXT AREA & INPUT FIELDS */
+textarea, input[type="text"] {
+    background-color: #0A142F !important;
+    color: #FFFFFF !important;
+    font-size: 0.98rem !important;
+    font-weight: 500 !important;
+    border: 1.5px solid rgba(56, 189, 248, 0.4) !important;
+    border-radius: 12px !important;
+    padding: 14px !important;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.15) !important;
+}
+
+textarea:focus, input[type="text"]:focus {
+    border-color: #FDE047 !important;
+    box-shadow: 0 0 22px rgba(253, 224, 71, 0.3) !important;
+    background-color: #0D1B3E !important;
+    color: #FFFFFF !important;
+}
+
+textarea::placeholder, input::placeholder {
+    color: #64748B !important;
+    opacity: 1 !important;
+}
+
+/* FILE UPLOADER DARK OVERRIDE */
+section[data-testid="stFileUploader"] {
+    background-color: rgba(10, 20, 47, 0.8) !important;
+    border: 1.5px dashed #EAB308 !important;
+    border-radius: 14px !important;
+    padding: 12px 18px !important;
+}
+
+section[data-testid="stFileUploader"] * {
+    color: #CBD5E1 !important;
+}
+
+section[data-testid="stFileUploader"] button {
+    background-color: #0F1C3F !important;
+    border: 1px solid #38BDF8 !important;
+    color: #38BDF8 !important;
+    border-radius: 8px !important;
+}
+
+section[data-testid="stFileUploader"] button:hover {
+    background-color: #0284C7 !important;
+    color: #FFFFFF !important;
+}
+
+/* FIX CHAT INPUT WHITE CONTAINER & CHAT BUBBLES */
 div[data-testid="stChatInput"] {
     background-color: #0A142F !important;
     border: 1.5px solid #38BDF8 !important;
-    border-radius: 12px !important;
-    box-shadow: 0 0 15px rgba(56, 189, 248, 0.25) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.25) !important;
+    padding: 4px !important;
 }
 
 div[data-testid="stChatInput"] textarea {
     background-color: transparent !important;
+    border: none !important;
     color: #FFFFFF !important;
+    box-shadow: none !important;
 }
 
 div[data-testid="stChatInput"] button {
     background-color: #0284C7 !important;
-    border-radius: 8px !important;
+    border-radius: 10px !important;
     color: white !important;
+    border: none !important;
 }
 
-/* FLOATING TOP-LEFT BADGE */
+div[data-testid="stChatMessage"] {
+    background-color: rgba(10, 20, 47, 0.85) !important;
+    border: 1px solid rgba(56, 189, 248, 0.25) !important;
+    border-radius: 14px !important;
+    margin-bottom: 12px !important;
+    padding: 12px 18px !important;
+    color: #F1F5F9 !important;
+}
+
+/* FIX TAB HEADERS */
+button[data-baseweb="tab"] {
+    background-color: transparent !important;
+    color: #94A3B8 !important;
+    font-weight: 700 !important;
+    border-radius: 8px 8px 0 0 !important;
+    padding: 10px 20px !important;
+    border: none !important;
+}
+
+button[data-baseweb="tab"][aria-selected="true"] {
+    background-color: rgba(14, 26, 56, 0.9) !important;
+    color: #FDE047 !important;
+    border-bottom: 3px solid #FDE047 !important;
+}
+
+div[data-baseweb="tab-highlight"] {
+    background-color: #FDE047 !important;
+}
+
+/* CUSTOM UI COMPONENTS */
 .floating-topleft-badge {
     position: fixed;
     top: 50px;
@@ -144,13 +251,13 @@ div[data-testid="stChatInput"] button {
     display: flex;
     align-items: center;
     gap: 9px;
-    background: rgba(8, 14, 33, 0.88);
+    background: rgba(8, 14, 33, 0.92);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     border: 1px solid rgba(234, 179, 8, 0.4);
     border-radius: 999px;
     padding: 6px 16px 6px 7px;
-    box-shadow: 0 4px 22px rgba(0,0,0,0.4), 0 0 14px rgba(56,189,248,0.14);
+    box-shadow: 0 4px 22px rgba(0,0,0,0.5), 0 0 14px rgba(56,189,248,0.15);
 }
 .floating-topleft-badge .fb-icon {
     width: 24px; height: 24px;
@@ -187,35 +294,6 @@ div[data-testid="stChatInput"] button {
     display: flex;
     align-items: center;
     gap: 8px;
-}
-
-textarea {
-    background-color: #0A142F !important;
-    color: #FFFFFF !important;
-    font-size: 0.98rem !important;
-    font-weight: 500 !important;
-    border: 1.5px solid #38BDF8 !important;
-    border-radius: 12px !important;
-    padding: 14px !important;
-    box-shadow: 0 0 15px rgba(56, 189, 248, 0.25) !important;
-}
-
-textarea:focus {
-    border-color: #FDE047 !important;
-    box-shadow: 0 0 22px rgba(253, 224, 71, 0.4) !important;
-    background-color: #0D1B3E !important;
-}
-
-textarea::placeholder {
-    color: #94A3B8 !important;
-    opacity: 1 !important;
-}
-
-section[data-testid="stFileUploader"] {
-    background-color: rgba(10, 20, 47, 0.8) !important;
-    border: 1.5px solid #EAB308 !important;
-    border-radius: 12px !important;
-    padding: 6px 12px !important;
 }
 
 .header-container {
@@ -346,6 +424,12 @@ div.stButton > button {
     text-transform: uppercase;
 }
 
+div.stButton > button:hover {
+    background: linear-gradient(135deg, #0369A1 0%, #075985 100%) !important;
+    border-color: #FDE047 !important;
+    box-shadow: 0 0 25px rgba(253, 224, 71, 0.5) !important;
+}
+
 .ai-search-frame {
     background: rgba(10, 20, 47, 0.65);
     border: 1px solid rgba(56, 189, 248, 0.3);
@@ -449,7 +533,9 @@ div.stButton > button {
 </style>
 """, unsafe_allow_html=True)
 
-# FLOATING BADGE (TOP-LEFT)
+# ---------------------------------------------------------
+# 4. TOP-LEFT FLOATING BADGE
+# ---------------------------------------------------------
 st.markdown("""<div class="floating-topleft-badge">
     <div class="fb-icon">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0A1228" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
@@ -464,7 +550,7 @@ st.markdown("""<div class="floating-topleft-badge">
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 4. HEADER TASKBAR WITH GOLD SHIELD & LEGAL ICON
+# 5. MAIN HEADER TASKBAR & BRANDING
 # ---------------------------------------------------------
 st.markdown("""<div class="header-container">
 <div style="display: flex; align-items: center; gap: 16px;">
@@ -501,7 +587,7 @@ st.markdown("""<div class="header-container">
 </div>""", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# GRAPHICAL METRICS ELEMENTS (TOP DASHBOARD DETAIL)
+# 6. GRAPHICAL METRICS ELEMENTS (TOP DASHBOARD DETAIL)
 # ---------------------------------------------------------
 m1, m2, m3, m4 = st.columns(4)
 with m1:
@@ -532,7 +618,7 @@ with m4:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 5. BUILT-IN GROUNDED KNOWLEDGE BASE (ENGLISH & INDONESIAN LAW)
+# 7. BUILT-IN GROUNDED KNOWLEDGE BASE
 # ---------------------------------------------------------
 BUILTIN_KNOWLEDGE_BASE = """
 [BUILT-IN GROUNDED KNOWLEDGE BASE: CONSTITUTION & LEGAL HIERARCHY]
@@ -547,10 +633,11 @@ BUILTIN_KNOWLEDGE_BASE = """
 3. FUNDAMENTAL LEGAL PRINCIPLES:
    - Lex Specialis Derogat Legi Generali: Specific laws override general laws.
    - Lex Superior Derogat Legi Inferiori: Higher ranking laws override lower ranking laws.
+   - Lex Posterior Derogat Legi Priori: Later laws supersede earlier ones on the same subject.
 """
 
 # ---------------------------------------------------------
-# 6. SESSION STATE INITIALIZATION
+# 8. SESSION STATE INITIALIZATION & MANAGEMENT
 # ---------------------------------------------------------
 if "pdf_text" not in st.session_state:
     st.session_state["pdf_text"] = ""
@@ -562,9 +649,11 @@ if "analysis_result" not in st.session_state:
     st.session_state["analysis_result"] = None
 if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = []
+if "query_logs" not in st.session_state:
+    st.session_state["query_logs"] = []
 
 # ---------------------------------------------------------
-# 7. SIDEBAR CONFIGURATION (MULTI-TIER SCOPE SELECTOR)
+# 9. SIDEBAR CONFIGURATION & CONTROL PANEL
 # ---------------------------------------------------------
 with st.sidebar:
     st.markdown("""<div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; padding: 12px; border-radius: 10px; margin-bottom: 16px;">
@@ -582,7 +671,8 @@ with st.sidebar:
         [
             "🏛️ Macro (National Level - UUD 1945 & Acts)",
             "🎓 Meso (Institutional / Campus Policy)",
-            "⚖️ Harmonization (National vs Local Alignment)"
+            "⚖️ Harmonization (National vs Local Alignment)",
+            "🌐 International Treaty & Trade Alignment"
         ],
         index=2
     )
@@ -597,8 +687,11 @@ with st.sidebar:
     st.markdown("""<div style="background: #0A142F; border-left: 3px solid #10B981; padding: 10px; border-radius: 6px; margin-bottom: 8px; font-size: 0.85rem;">
 <b style="color:#FFFFFF;">§ 1945 Constitution (UUD)</b><br><span style="color:#94A3B8;">Amendments I-IV Indexed</span>
 </div>
-<div style="background: #0A142F; border-left: 3px solid #10B981; padding: 10px; border-radius: 6px; font-size: 0.85rem;">
+<div style="background: #0A142F; border-left: 3px solid #10B981; padding: 10px; border-radius: 6px; margin-bottom: 8px; font-size: 0.85rem;">
 <b style="color:#FFFFFF;">§ Statutory Hierarchy</b><br><span style="color:#94A3B8;">Act 12/2011 jo Act 13/2022</span>
+</div>
+<div style="background: #0A142F; border-left: 3px solid #38BDF8; padding: 10px; border-radius: 6px; font-size: 0.85rem;">
+<b style="color:#FFFFFF;">§ Lex Specialis Engine</b><br><span style="color:#94A3B8;">Precedence Resolver Active</span>
 </div>""", unsafe_allow_html=True)
 
     st.markdown('<div class="lexis-divider"></div>', unsafe_allow_html=True)
@@ -614,7 +707,7 @@ with st.sidebar:
     st.caption("🛡️ **GovShield Intelligence Engine v3.0**")
 
 # ---------------------------------------------------------
-# 8. ROBOT WELCOME OVERLAY (CAN BE DISMISSED)
+# 10. ROBOT WELCOME OVERLAY (DISMISSIBLE HERO CARD)
 # ---------------------------------------------------------
 if not st.session_state["robot_dismissed"]:
     st.markdown("""
@@ -646,7 +739,7 @@ if not st.session_state["robot_dismissed"]:
         st.rerun()
 
 # ---------------------------------------------------------
-# 9. INPUT AREA (PDF UPLOAD + QUERY INPUT)
+# 11. INPUT SECTION (PDF ATTACHMENT & TEXT QUERY)
 # ---------------------------------------------------------
 st.markdown("""<div class="custom-label">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EAB308" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -707,7 +800,7 @@ if user_query.strip():
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 10. EXECUTE BUTTON & AI REASONING LOGIC
+# 12. EXECUTE LEGAL ANALYSIS BUTTON & AI PROCESSING ENGINE
 # ---------------------------------------------------------
 if st.button("RUN GOVSHIELD LEGAL INTELLIGENCE ANALYSIS"):
     st.session_state["robot_dismissed"] = True
@@ -778,7 +871,7 @@ INQUIRY / CASE SCENARIO:
                 st.error(f"Technical Analysis Error: {e}")
 
 # ---------------------------------------------------------
-# 11. OUTPUT DASHBOARD & MULTI-TAB WORKSPACE
+# 13. RESULTS DASHBOARD & MULTI-TAB WORKSPACE
 # ---------------------------------------------------------
 if st.session_state["analysis_result"]:
     result = st.session_state["analysis_result"]
@@ -929,3 +1022,14 @@ Generated automatically by GovShield AI Engine v3.0
             file_name="GovShield_Executive_Legal_Brief.txt",
             mime="text/plain"
         )
+
+# ---------------------------------------------------------
+# 14. FOOTER & COMPLIANCE DISCLAIMER
+# ---------------------------------------------------------
+st.markdown("<br><br><br>", unsafe_allow_html=True)
+st.markdown("""
+<div style="text-align: center; font-size: 0.78rem; color: #64748B; border-top: 1px solid rgba(56, 189, 248, 0.2); padding-top: 16px;">
+    🛡️ <b>GovShield AI Engine v3.0</b> — Enterprise Legal Decision Support System.<br>
+    <i>Disclaimer: Information provided is for decision intelligence support and regulatory alignment. Always consult certified legal practitioners for official judicial actions.</i>
+</div>
+""", unsafe_allow_html=True)
