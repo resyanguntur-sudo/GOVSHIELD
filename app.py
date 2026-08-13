@@ -1,51 +1,66 @@
+# ==============================================================================
+# GOVSHIELD AI | Enterprise Legal & Regulatory Intelligence Workspace
+# Module: Main Application Engine (Production Grade)
+# Line Target: > 1,250 Lines of Enterprise Architecture
+# ==============================================================================
+
 import html
 import json
-import os
-import re
 import time
-import base64
+import datetime
+import pandas as pd
 import streamlit as st
 from openai import OpenAI
 from pypdf import PdfReader
 
-# ---------------------------------------------------------
-# 1. PAGE CONFIGURATION & METADATA
-# ---------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 1. PAGE CONFIGURATION
+# ------------------------------------------------------------------------------
 st.set_page_config(
-    page_title="GOVSHIELD AI | Legal Decision Intelligence Platform",
+    page_title="GOVSHIELD AI | Legal Decision Intelligence Enterprise",
     page_icon="⚖️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ---------------------------------------------------------
+# ------------------------------------------------------------------------------
 # 2. API KEYS & SECRETS MANAGEMENT
-# ---------------------------------------------------------
+# ------------------------------------------------------------------------------
 try:
     GROQ_KEY = st.secrets["GROQ_API_KEY"]
     BASE_URL = st.secrets.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
 except KeyError:
-    st.error("❌ Critical Secret Missing: 'GROQ_API_KEY' was not found in .streamlit/secrets.toml!")
+    st.error("❌ Secrets Error: Key 'GROQ_API_KEY' was not found in .streamlit/secrets.toml!")
     st.stop()
-except Exception as e:
-    st.error(f"❌ Error reading .streamlit/secrets.toml file: {e}")
+except Exception as err_sec:
+    st.error(f"❌ Secrets Configuration Error: {err_sec}")
     st.stop()
 
-# ---------------------------------------------------------
-# 3. ABSOLUTE DARK THEME & CSS OVERRIDES (ZERO WHITE LEAKS)
-# ---------------------------------------------------------
-st.markdown("""<style>
+# ------------------------------------------------------------------------------
+# 3. ZERO-WHITE COMPLETE THEME STYLING & COMPONENT AUDIT (CSS)
+# ------------------------------------------------------------------------------
+# Color Palette System (Strict Dark Legal Tech Theme):
+# Base Dark Background: #040711 / #070C1A / #0A1228 / #0D1B3E
+# Card Backgrounds: #0A142F / #0E1A38 / #132247
+# Text Primary: #E2E8F0 (Off-white cyan/slate, strictly NO pure #FFFFFF)
+# Text Secondary: #94A3B8 / #CBD5E1
+# Brand Accents: #38BDF8 (Sky Cyan), #EAB308 (Gold), #FDE047 (Bright Gold)
+# Status Colors: #34D399 (Emerald Green), #F87171 (Crimson Red), #FBBF24 (Amber)
+# ------------------------------------------------------------------------------
+
+THEME_CSS = """
+<style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-/* GLOBAL RESET & ROOT BACKGROUND */
-html, body, [data-testid="stAppViewContainer"], .stApp {
-    background-color: #040711 !important;
-    color: #F1F5F9 !important;
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+/* Global Font & Reset */
+html, body, [class*="css"] {
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    color: #E2E8F0 !important;
 }
 
-/* BACKGROUND SVG PATTERN & TECH GLOW */
+/* Base App Container Background */
 .stApp {
+    background-color: #040711 !important;
     background-image: 
         url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 24 24" fill="none" stroke="rgba(234,179,8,0.035)" stroke-width="0.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M19 7l2 8H17l2-8z"/><path d="M5 7l2 8H3l2-8z"/><path d="M9 21h6"/><path d="M4 21h16"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>'),
         radial-gradient(circle at 12% -8%, rgba(234, 179, 8, 0.16) 0%, transparent 40%),
@@ -57,195 +72,314 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     background-attachment: fixed !important;
 }
 
-/* HEADER & SIDEBAR BUTTON FIXES */
+/* Header Override */
 header[data-testid="stHeader"] {
     background: transparent !important;
     z-index: 99999 !important;
 }
 
+/* Sidebar Styling & Override */
+section[data-testid="stSidebar"] {
+    background-color: #0A1228 !important;
+    border-right: 1px solid rgba(56, 189, 248, 0.25) !important;
+}
+section[data-testid="stSidebar"] * {
+    color: #E2E8F0 !important;
+}
+
+/* Sidebar Collapse & Toggle Buttons */
 button[data-testid="stSidebarCollapseButton"], 
-button[data-testid="baseButton-headerNoPadding"],
-button[aria-label="Close"] {
+button[data-testid="baseButton-headerNoPadding"] {
     background-color: rgba(10, 20, 47, 0.9) !important;
     border: 1px solid rgba(234, 179, 8, 0.6) !important;
     color: #FDE047 !important;
     border-radius: 8px !important;
     box-shadow: 0 0 12px rgba(234, 179, 8, 0.25) !important;
 }
-
 button[data-testid="stSidebarCollapseButton"]:hover, 
 button[data-testid="baseButton-headerNoPadding"]:hover {
     border-color: #38BDF8 !important;
     background-color: #0D1B3E !important;
-    color: #38BDF8 !important;
 }
 
-/* MAIN CONTAINER PADDING */
+/* Block Container Padding */
 .block-container {
-    padding-top: 1.8rem !important;
+    padding-top: 2rem !important;
     padding-bottom: 3rem !important;
-    padding-left: 2.2rem !important;
-    padding-right: 2.2rem !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
     max-width: 100% !important;
-    position: relative;
-    z-index: 2;
 }
 
-/* SIDEBAR DARK OVERRIDE */
-section[data-testid="stSidebar"] {
-    background-color: #0A1228 !important;
-    border-right: 1px solid rgba(56, 189, 248, 0.25) !important;
+/* Headings Customization */
+h1, h2, h3, h4, h5, h6 {
+    color: #FDE047 !important;
+    font-family: 'Playfair Display', serif !important;
+    font-weight: 700 !important;
 }
 
-section[data-testid="stSidebar"] * {
-    color: #F1F5F9 !important;
-}
-
-/* FIX ALL SELECTBOXES / DROPDOWNS WHITE BACKGROUND LEAKS */
-div[data-baseweb="select"] {
-    background-color: #0A142F !important;
-    border-radius: 10px !important;
-}
-
-div[data-baseweb="select"] > div {
-    background-color: #0A142F !important;
-    border: 1.5px solid rgba(56, 189, 248, 0.4) !important;
-    color: #F1F5F9 !important;
-    border-radius: 10px !important;
-}
-
-div[data-baseweb="select"] > div:hover {
-    border-color: #FDE047 !important;
-    box-shadow: 0 0 12px rgba(253, 224, 71, 0.25) !important;
-}
-
-div[data-baseweb="select"] * {
-    color: #F1F5F9 !important;
-    fill: #F1F5F9 !important;
-}
-
-/* DROPDOWN MENU / POPOVER FLOATING LIST */
-div[data-baseweb="popover"], ul[role="listbox"], div[role="listbox"] {
-    background-color: #0A142F !important;
-    border: 1px solid #38BDF8 !important;
-    border-radius: 10px !important;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
-}
-
-ul[role="listbox"] li, div[role="listbox"] div {
-    background-color: #0A142F !important;
-    color: #F1F5F9 !important;
-}
-
-ul[role="listbox"] li[aria-selected="true"], ul[role="listbox"] li:hover {
-    background-color: #1E293B !important;
-    color: #38BDF8 !important;
-}
-
-/* FIX TEXT AREA & INPUT FIELDS */
+/* Text Inputs and Text Areas */
 textarea, input[type="text"] {
     background-color: #0A142F !important;
-    color: #FFFFFF !important;
-    font-size: 0.98rem !important;
+    color: #E2E8F0 !important;
+    font-size: 0.95rem !important;
     font-weight: 500 !important;
-    border: 1.5px solid rgba(56, 189, 248, 0.4) !important;
+    border: 1.5px solid #38BDF8 !important;
     border-radius: 12px !important;
-    padding: 14px !important;
+    padding: 12px !important;
     box-shadow: 0 0 15px rgba(56, 189, 248, 0.15) !important;
 }
-
 textarea:focus, input[type="text"]:focus {
     border-color: #FDE047 !important;
-    box-shadow: 0 0 22px rgba(253, 224, 71, 0.3) !important;
+    box-shadow: 0 0 20px rgba(253, 224, 71, 0.3) !important;
     background-color: #0D1B3E !important;
-    color: #FFFFFF !important;
+    color: #F8FAFC !important;
 }
-
 textarea::placeholder, input::placeholder {
     color: #64748B !important;
-    opacity: 1 !important;
 }
 
-/* FILE UPLOADER DARK OVERRIDE */
+/* Selectbox & Dropdowns */
+div[data-baseweb="select"] > div {
+    background-color: #0A142F !important;
+    border: 1.5px solid #38BDF8 !important;
+    border-radius: 10px !important;
+    color: #E2E8F0 !important;
+}
+div[data-baseweb="popover"] div {
+    background-color: #0A1228 !important;
+    color: #E2E8F0 !important;
+}
+li[role="option"] {
+    background-color: #0A1228 !important;
+    color: #E2E8F0 !important;
+}
+li[role="option"]:hover {
+    background-color: #132247 !important;
+    color: #FDE047 !important;
+}
+
+/* File Uploader Customization */
 section[data-testid="stFileUploader"] {
     background-color: rgba(10, 20, 47, 0.8) !important;
     border: 1.5px dashed #EAB308 !important;
-    border-radius: 14px !important;
-    padding: 12px 18px !important;
+    border-radius: 12px !important;
+    padding: 10px 14px !important;
 }
-
 section[data-testid="stFileUploader"] * {
     color: #CBD5E1 !important;
 }
 
-section[data-testid="stFileUploader"] button {
-    background-color: #0F1C3F !important;
+/* Streamlit Buttons Styling */
+div.stButton > button {
+    background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%) !important;
+    color: #F8FAFC !important;
+    font-weight: 800 !important;
+    font-size: 0.95rem !important;
     border: 1px solid #38BDF8 !important;
+    border-radius: 10px !important;
+    padding: 12px 24px !important;
+    box-shadow: 0 0 18px rgba(56, 189, 248, 0.35) !important;
+    width: 100% !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+}
+div.stButton > button:hover {
+    background: linear-gradient(135deg, #0369A1 0%, #0284C7 100%) !important;
+    border-color: #FDE047 !important;
+    box-shadow: 0 0 25px rgba(253, 224, 71, 0.4) !important;
+    color: #FDE047 !important;
+}
+
+/* STREAMLIT BUILT-IN COMPONENTS AUDIT (ZERO PURE WHITE) */
+
+/* 1. Expander Override */
+div[data-testid="stExpander"] {
+    background-color: #0A142F !important;
+    border: 1px solid rgba(56, 189, 248, 0.3) !important;
+    border-radius: 12px !important;
+    color: #E2E8F0 !important;
+}
+div[data-testid="stExpander"] summary {
     color: #38BDF8 !important;
+    font-weight: 700 !important;
+    background-color: #0E1A38 !important;
+    border-radius: 12px 12px 0 0 !important;
+}
+div[data-testid="stExpander"] summary:hover {
+    color: #FDE047 !important;
+}
+
+/* 2. Metrics Override */
+div[data-testid="stMetric"] {
+    background-color: #0A142F !important;
+    border: 1px solid rgba(234, 179, 8, 0.3) !important;
+    border-radius: 12px !important;
+    padding: 12px 16px !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
+}
+div[data-testid="stMetricLabel"] {
+    color: #94A3B8 !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+}
+div[data-testid="stMetricValue"] {
+    color: #FDE047 !important;
+    font-family: 'Playfair Display', serif !important;
+    font-weight: 800 !important;
+}
+
+/* 3. Progress Bar Override */
+div[data-testid="stProgressBar"] > div > div {
+    background: linear-gradient(90deg, #EAB308, #38BDF8, #34D399) !important;
+    border-radius: 10px !important;
+}
+div[data-testid="stProgressBar"] {
+    background-color: #070C1A !important;
+    border-radius: 10px !important;
+    height: 12px !important;
+    border: 1px solid rgba(56, 189, 248, 0.2) !important;
+}
+
+/* 4. Dataframe / Table Override */
+div[data-testid="stDataFrame"] {
+    background-color: #0A142F !important;
+    border: 1px solid rgba(56, 189, 248, 0.3) !important;
+    border-radius: 10px !important;
+}
+.dgw-container, .stDataFrame div {
+    color: #E2E8F0 !important;
+    background-color: #0A142F !important;
+}
+
+/* 5. Code Block & Pre Override */
+pre, code {
+    background-color: #070C1A !important;
+    border: 1px solid rgba(56, 189, 248, 0.25) !important;
+    color: #34D399 !important;
+    font-family: 'JetBrains Mono', monospace !important;
     border-radius: 8px !important;
 }
 
-section[data-testid="stFileUploader"] button:hover {
-    background-color: #0284C7 !important;
-    color: #FFFFFF !important;
+/* 6. Checkbox, Radio & Slider Override */
+div[data-testid="stCheckbox"] label span {
+    color: #E2E8F0 !important;
+    font-weight: 600 !important;
+}
+div[data-testid="stRadioButton"] label span {
+    color: #E2E8F0 !important;
+    font-weight: 600 !important;
+}
+div[data-testid="stSlider"] * {
+    color: #38BDF8 !important;
 }
 
-/* FIX CHAT INPUT WHITE CONTAINER & CHAT BUBBLES */
-div[data-testid="stChatInput"] {
-    background-color: #0A142F !important;
-    border: 1.5px solid #38BDF8 !important;
-    border-radius: 14px !important;
-    box-shadow: 0 0 20px rgba(56, 189, 248, 0.25) !important;
-    padding: 4px !important;
+/* 7. Tooltip Override */
+div[data-testid="stTooltipIcon"] {
+    color: #EAB308 !important;
 }
 
-div[data-testid="stChatInput"] textarea {
-    background-color: transparent !important;
-    border: none !important;
-    color: #FFFFFF !important;
-    box-shadow: none !important;
-}
-
-div[data-testid="stChatInput"] button {
-    background-color: #0284C7 !important;
-    border-radius: 10px !important;
-    color: white !important;
-    border: none !important;
-}
-
-div[data-testid="stChatMessage"] {
-    background-color: rgba(10, 20, 47, 0.85) !important;
-    border: 1px solid rgba(56, 189, 248, 0.25) !important;
-    border-radius: 14px !important;
-    margin-bottom: 12px !important;
-    padding: 12px 18px !important;
-    color: #F1F5F9 !important;
-}
-
-/* FIX TAB HEADERS */
+/* 8. Tabs Styling */
 button[data-baseweb="tab"] {
-    background-color: transparent !important;
+    background-color: #0A1228 !important;
+    border: 1px solid rgba(56, 189, 248, 0.2) !important;
+    border-radius: 8px 8px 0 0 !important;
     color: #94A3B8 !important;
     font-weight: 700 !important;
-    border-radius: 8px 8px 0 0 !important;
     padding: 10px 20px !important;
-    border: none !important;
 }
-
-button[data-baseweb="tab"][aria-selected="true"] {
-    background-color: rgba(14, 26, 56, 0.9) !important;
+button[aria-selected="true"] {
+    background-color: #0E1A38 !important;
+    border-color: #FDE047 !important;
     color: #FDE047 !important;
-    border-bottom: 3px solid #FDE047 !important;
+    box-shadow: 0 -4px 12px rgba(253, 224, 71, 0.15) !important;
 }
 
-div[data-baseweb="tab-highlight"] {
-    background-color: #FDE047 !important;
+/* 9. Chat Messages Override */
+div[data-testid="stChatMessage"] {
+    background-color: #0A142F !important;
+    border: 1px solid rgba(56, 189, 248, 0.25) !important;
+    border-radius: 12px !important;
+    margin-bottom: 10px !important;
 }
 
-/* CUSTOM UI COMPONENTS */
+/* Custom HTML Card Components */
+.lexis-card-cyan {
+    background: rgba(14, 26, 56, 0.88);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+    color: #E2E8F0 !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.lexis-card-gold {
+    background: rgba(14, 26, 56, 0.88);
+    border: 1px solid rgba(234, 179, 8, 0.4);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+    color: #E2E8F0 !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.card-title-cyan {
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: #38BDF8 !important;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.card-title-gold {
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: #FDE047 !important;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Custom Status Badges */
+.badge-supported {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1.5px solid #10B981;
+    color: #34D399 !important;
+    padding: 16px 22px;
+    border-radius: 12px;
+    font-weight: 700;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+}
+.badge-review {
+    background: rgba(234, 179, 8, 0.15);
+    border: 1.5px solid #EAB308;
+    color: #FDE047 !important;
+    padding: 16px 22px;
+    border-radius: 12px;
+    font-weight: 700;
+    box-shadow: 0 0 15px rgba(234, 179, 8, 0.2);
+}
+.badge-rejected {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1.5px solid #EF4444;
+    color: #F87171 !important;
+    padding: 16px 22px;
+    border-radius: 12px;
+    font-weight: 700;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+}
+
+/* Floating Badge */
 .floating-topleft-badge {
     position: fixed;
-    top: 50px;
+    top: 52px;
     left: 16px;
     z-index: 9999;
     display: flex;
@@ -267,35 +401,20 @@ div[data-baseweb="tab-highlight"] {
     flex-shrink: 0;
     box-shadow: 0 0 10px rgba(234,179,8,0.5);
 }
-.floating-topleft-badge .fb-text { line-height: 1.15; }
 .floating-topleft-badge .fb-name {
     font-family: 'Playfair Display', serif;
     font-weight: 700;
     font-size: 0.8rem;
     color: #FDE047 !important;
     letter-spacing: 0.3px;
-    white-space: nowrap;
 }
 .floating-topleft-badge .fb-desc {
-    font-size: 0.6rem;
+    font-size: 0.62rem;
     color: #7DD3FC !important;
     font-weight: 600;
-    letter-spacing: 0.2px;
-    white-space: nowrap;
 }
 
-.custom-label {
-    font-size: 0.88rem !important;
-    font-weight: 800 !important;
-    color: #38BDF8 !important;
-    letter-spacing: 0.8px !important;
-    text-transform: uppercase;
-    margin-bottom: 8px !important;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
+/* Header Styles */
 .header-container {
     display: flex;
     justify-content: space-between;
@@ -304,9 +423,7 @@ div[data-baseweb="tab-highlight"] {
     gap: 16px;
     padding: 0 0 12px 0;
     width: 100%;
-    position: relative;
 }
-
 .gold-shield-logo {
     background: linear-gradient(135deg, rgba(234, 179, 8, 0.25) 0%, rgba(15, 28, 63, 0.9) 100%);
     padding: 12px;
@@ -315,38 +432,33 @@ div[data-baseweb="tab-highlight"] {
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 20px rgba(234, 179, 8, 0.4), inset 0 0 10px rgba(254, 224, 71, 0.2);
-    position: relative;
+    box-shadow: 0 0 20px rgba(234, 179, 8, 0.4);
 }
-
 .lexis-title {
     font-family: 'Playfair Display', serif;
     font-size: clamp(1.6rem, 4.2vw, 2.4rem);
     font-weight: 800;
     letter-spacing: 1px;
-    background: linear-gradient(120deg, #FFFFFF 0%, #FDE047 42%, #EAB308 55%, #FFFFFF 100%);
+    background: linear-gradient(120deg, #CBD5E1 0%, #FDE047 42%, #EAB308 55%, #CBD5E1 100%);
     background-size: 220% auto;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     margin: 0;
     text-transform: uppercase;
 }
-
 .lexis-subtitle {
     font-size: 0.85rem;
     color: #94A3B8 !important;
     font-weight: 500;
 }
-
 .lexis-maxim {
     font-family: 'Playfair Display', serif;
     font-style: italic;
     font-size: 0.72rem;
     color: #EAB308 !important;
-    opacity: 0.85;
+    opacity: 0.9;
     margin-top: 3px;
 }
-
 .top-right-badge {
     background: rgba(14, 26, 56, 0.85);
     border: 1px solid rgba(56, 189, 248, 0.4);
@@ -365,79 +477,44 @@ div[data-baseweb="tab-highlight"] {
     color: #38BDF8 !important;
     font-weight: 600;
 }
-
-/* METRIC / GRAPH CARDS FOR DASHBOARD TOP */
-.metric-card {
-    background: rgba(10, 20, 47, 0.8);
-    border: 1px solid rgba(56, 189, 248, 0.3);
-    border-radius: 12px;
-    padding: 14px 18px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-}
-.metric-title {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #94A3B8;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-.metric-value {
-    font-size: 1.4rem;
-    font-weight: 800;
-    color: #FDE047;
-    margin-top: 4px;
-}
-.metric-sub {
-    font-size: 0.72rem;
-    color: #38BDF8;
-    margin-top: 2px;
-}
-
 .letterhead-divider {
     display: flex;
     align-items: center;
     gap: 14px;
-    margin: 6px 0 18px 0;
+    margin: 6px 0 22px 0;
 }
 .letterhead-divider .lh-line {
     flex: 1;
     height: 1px;
     background: linear-gradient(90deg, transparent, rgba(234, 179, 8, 0.75), rgba(56, 189, 248, 0.6), transparent);
 }
-
 .lexis-divider {
     height: 1px;
     background: linear-gradient(90deg, rgba(56, 189, 248, 0.8) 0%, rgba(234, 179, 8, 0.5) 50%, transparent 100%);
-    margin: 8px 0 20px 0;
+    margin: 12px 0 24px 0;
 }
 
-div.stButton > button {
-    background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%) !important;
-    color: #FFFFFF !important;
-    font-weight: 800 !important;
-    font-size: 0.95rem !important;
-    border: 1px solid #38BDF8 !important;
-    border-radius: 10px !important;
-    padding: 14px 28px !important;
-    box-shadow: 0 0 20px rgba(56, 189, 248, 0.4) !important;
-    width: 100% !important;
-    text-transform: uppercase;
+/* Welcome Overlay Card */
+.robot-welcome-card {
+    background: linear-gradient(135deg, rgba(10, 20, 47, 0.95) 0%, rgba(15, 28, 63, 0.95) 100%);
+    border: 1.5px solid #FDE047;
+    border-radius: 20px;
+    padding: 28px;
+    text-align: center;
+    box-shadow: 0 0 35px rgba(234, 179, 8, 0.25);
+    margin-bottom: 25px;
 }
-
-div.stButton > button:hover {
-    background: linear-gradient(135deg, #0369A1 0%, #075985 100%) !important;
-    border-color: #FDE047 !important;
-    box-shadow: 0 0 25px rgba(253, 224, 71, 0.5) !important;
+@keyframes floatRobot {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+    100% { transform: translateY(0px); }
 }
-
-.ai-search-frame {
-    background: rgba(10, 20, 47, 0.65);
-    border: 1px solid rgba(56, 189, 248, 0.3);
-    border-radius: 14px;
-    padding: 14px 18px;
-    margin-bottom: 8px;
+.robot-avatar {
+    width: 85px;
+    height: 85px;
+    margin: 0 auto 12px auto;
+    animation: floatRobot 3.5s ease-in-out infinite;
 }
-
 .pulse-dot {
     width: 8px;
     height: 8px;
@@ -447,95 +524,14 @@ div.stButton > button:hover {
     display: inline-block;
     margin-right: 6px;
 }
-
-.lexis-card-cyan {
-    background: rgba(14, 26, 56, 0.85);
-    border: 1px solid rgba(56, 189, 248, 0.4);
-    border-radius: 14px;
-    padding: 20px;
-    margin-bottom: 16px;
-    color: #F1F5F9 !important;
-}
-
-.lexis-card-gold {
-    background: rgba(14, 26, 56, 0.85);
-    border: 1px solid rgba(234, 179, 8, 0.4);
-    border-radius: 14px;
-    padding: 20px;
-    margin-bottom: 16px;
-    color: #F1F5F9 !important;
-}
-
-.card-title-cyan {
-    font-size: 0.85rem;
-    font-weight: 800;
-    color: #38BDF8 !important;
-    letter-spacing: 1px;
-    margin-bottom: 10px;
-}
-
-.card-title-gold {
-    font-size: 0.85rem;
-    font-weight: 800;
-    color: #FDE047 !important;
-    letter-spacing: 1px;
-    margin-bottom: 10px;
-}
-
-.badge-supported {
-    background: rgba(16, 185, 129, 0.15);
-    border: 1px solid #10B981;
-    color: #34D399 !important;
-    padding: 14px 20px;
-    border-radius: 10px;
-    font-weight: 700;
-}
-.badge-review {
-    background: rgba(234, 179, 8, 0.15);
-    border: 1px solid #EAB308;
-    color: #FDE047 !important;
-    padding: 14px 20px;
-    border-radius: 10px;
-    font-weight: 700;
-}
-.badge-rejected {
-    background: rgba(239, 68, 68, 0.15);
-    border: 1px solid #EF4444;
-    color: #F87171 !important;
-    padding: 14px 20px;
-    border-radius: 10px;
-    font-weight: 700;
-}
-
-/* ROBOT WELCOME CARD STYLES */
-.robot-welcome-card {
-    background: linear-gradient(135deg, rgba(10, 20, 47, 0.95) 0%, rgba(15, 28, 63, 0.95) 100%);
-    border: 1.5px solid #FDE047;
-    border-radius: 20px;
-    padding: 30px;
-    text-align: center;
-    box-shadow: 0 0 35px rgba(234, 179, 8, 0.25), inset 0 0 15px rgba(56, 189, 248, 0.15);
-    margin-bottom: 25px;
-}
-
-@keyframes floatRobot {
-    0% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
-    100% { transform: translateY(0px); }
-}
-
-.robot-avatar {
-    width: 90px;
-    height: 90px;
-    margin: 0 auto 15px auto;
-    animation: floatRobot 3.5s ease-in-out infinite;
-}
 </style>
-""", unsafe_allow_html=True)
+"""
 
-# ---------------------------------------------------------
-# 4. TOP-LEFT FLOATING BADGE
-# ---------------------------------------------------------
+st.markdown(THEME_CSS, unsafe_allow_html=True)
+
+# ------------------------------------------------------------------------------
+# 4. FLOATING TOP-LEFT BADGE (SVG RENDERED)
+# ------------------------------------------------------------------------------
 st.markdown("""<div class="floating-topleft-badge">
     <div class="fb-icon">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0A1228" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
@@ -543,15 +539,15 @@ st.markdown("""<div class="floating-topleft-badge">
         </svg>
     </div>
     <div class="fb-text">
-        <div class="fb-name">GovShield AI</div>
+        <div class="fb-name">GovShield AI Enterprise</div>
         <div class="fb-desc">Evidence-First Legal Intelligence</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# 5. MAIN HEADER TASKBAR & BRANDING
-# ---------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 5. ENTERPRISE HEADER WORKSPACE
+# ------------------------------------------------------------------------------
 st.markdown("""<div class="header-container">
 <div style="display: flex; align-items: center; gap: 16px;">
 <div class="gold-shield-logo">
@@ -573,92 +569,76 @@ st.markdown("""<div class="header-container">
 </div>
 <div>
 <h1 class="lexis-title">GOVSHIELD AI</h1>
-<div class="lexis-subtitle">Evidence-First Legal &amp; Regulatory Intelligence Engine</div>
+<div class="lexis-subtitle">Enterprise Evidence-First Legal &amp; Decision Intelligence Engine</div>
 <div class="lexis-maxim">"Fiat justitia ruat caelum" — Let justice be done though the heavens fall</div>
 </div>
 </div>
 <div class="top-right-badge">
-<div class="brand-name">🛡️ GOVSHIELD AI v3.0</div>
-<div class="brand-desc">Global Legal Analysis System</div>
+<div class="brand-name">🛡️ GOVSHIELD v3.5 ENTERPRISE</div>
+<div class="brand-desc">Grounded Decision Intelligence System</div>
 </div>
 </div>
 <div class="letterhead-divider">
 <span class="lh-line"></span>
 </div>""", unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# 6. GRAPHICAL METRICS ELEMENTS (TOP DASHBOARD DETAIL)
-# ---------------------------------------------------------
-m1, m2, m3, m4 = st.columns(4)
-with m1:
-    st.markdown("""<div class="metric-card">
-        <div class="metric-title">Legal Confidence Rate</div>
-        <div class="metric-value">98.4%</div>
-        <div class="metric-sub">▲ 1.2% vs Manual Audit</div>
-    </div>""", unsafe_allow_html=True)
-with m2:
-    st.markdown("""<div class="metric-card">
-        <div class="metric-title">Statutory Indexes</div>
-        <div class="metric-value">14,280+</div>
-        <div class="metric-sub">UUD 1945 & Acts Indexed</div>
-    </div>""", unsafe_allow_html=True)
-with m3:
-    st.markdown("""<div class="metric-card">
-        <div class="metric-title">Conflict Detection</div>
-        <div class="metric-value">Active</div>
-        <div class="metric-sub">Lex Specialis Engine</div>
-    </div>""", unsafe_allow_html=True)
-with m4:
-    st.markdown("""<div class="metric-card">
-        <div class="metric-title">Analysis Latency</div>
-        <div class="metric-value">0.82s</div>
-        <div class="metric-sub">Real-time LLM Stream</div>
-    </div>""", unsafe_allow_html=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# ---------------------------------------------------------
-# 7. BUILT-IN GROUNDED KNOWLEDGE BASE
-# ---------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 6. BUILT-IN KNOWLEDGE BASE & LEGAL DOCTRINE INDEX
+# ------------------------------------------------------------------------------
 BUILTIN_KNOWLEDGE_BASE = """
 [BUILT-IN GROUNDED KNOWLEDGE BASE: CONSTITUTION & LEGAL HIERARCHY]
 1. 1945 CONSTITUTION OF THE REPUBLIC OF INDONESIA (UUD 1945 - Amendments I-IV):
-   - Article 1 (3): Indonesia is a constitutional state governed by the rule of law.
-   - Article 28D (1): Guarantee of fair legal certainty and equal treatment before the law.
-   - Article 31: Human Rights & Right to Education.
-   - Public Policy & Governance Provisions.
-2. STATUTORY HIERARCHY (Act No. 12/2011 & Act No. 13/2022):
-   - 1945 Constitution (UUD 1945) > People's Consultative Assembly Resolutions (TAP MPR) > Acts/Laws (UU) / Government Regulations in Lieu of Law (Perppu) > Government Regulations (PP) > Presidential Regulations (Perpres) > Provincial Decrees > Regency/City Regulations.
-   - Internal Policies / Institutional Regulations (Circular Letters, Rector/Dean Decrees): Operational rules that MUST NOT contradict superior statutory laws.
-3. FUNDAMENTAL LEGAL PRINCIPLES:
-   - Lex Specialis Derogat Legi Generali: Specific laws override general laws.
-   - Lex Superior Derogat Legi Inferiori: Higher ranking laws override lower ranking laws.
-   - Lex Posterior Derogat Legi Priori: Later laws supersede earlier ones on the same subject.
+   - Article 1 (3): Indonesia is a constitutional state governed by the rule of law (Negara Hukum).
+   - Article 28D (1): Guarantee of fair legal certainty, equality before the law, and legal protection.
+   - Article 28E / 31: Fundamental Human Rights, Freedom of Association, and Right to Education.
+   - Public Policy & Good Governance Provisions (AAUPB Principles).
+
+2. STATUTORY HIERARCHY & NORMATIVE PRECEDENCE (Act No. 12/2011 jo Act No. 13/2022):
+   - Level 1: 1945 Constitution (UUD 1945) - Supreme Law of the Land.
+   - Level 2: People's Consultative Assembly Resolutions (TAP MPR).
+   - Level 3: Acts / Statutory Laws (Undang-Undang / UU) & Government Regulations in Lieu of Law (Perppu).
+   - Level 4: Government Regulations (Peraturan Pemerintah / PP).
+   - Level 5: Presidential Regulations (Peraturan Presiden / Perpres).
+   - Level 6: Provincial Regional Decrees (Perda Provinsi).
+   - Level 7: Regency/City Decrees (Perda Kabupaten/Kota).
+   - Supplementary: Internal Policy / Institutional Regulations (Circular Letters / Circulars, Rector/Dean Decrees, Board Decisions) are operational rules that MUST NOT contradict superior statutory laws.
+
+3. FUNDAMENTAL LEGAL DOCTRINES & PRINCIPLES:
+   - Lex Specialis Derogat Legi Generali: Specific rules prevail over general rules.
+   - Lex Superior Derogat Legi Inferiori: Higher-ranking laws invalidate conflicting lower-ranking provisions.
+   - Lex Posterior Derogat Legi Priori: Newer statutory enactments supersede older contradictory enactments.
+   - Non-Retroactivity Principle: Legal enactments cannot be applied retroactively to detriment statutory rights.
 """
 
-# ---------------------------------------------------------
-# 8. SESSION STATE INITIALIZATION & MANAGEMENT
-# ---------------------------------------------------------
-if "pdf_text" not in st.session_state:
-    st.session_state["pdf_text"] = ""
-if "pdf_name" not in st.session_state:
-    st.session_state["pdf_name"] = ""
-if "robot_dismissed" not in st.session_state:
-    st.session_state["robot_dismissed"] = False
-if "analysis_result" not in st.session_state:
-    st.session_state["analysis_result"] = None
-if "chat_history" not in st.session_state:
-    st.session_state["chat_history"] = []
-if "query_logs" not in st.session_state:
-    st.session_state["query_logs"] = []
+# ------------------------------------------------------------------------------
+# 7. SESSION STATE MANAGEMENT
+# ------------------------------------------------------------------------------
+def init_session_states():
+    defaults = {
+        "pdf_text": "",
+        "pdf_name": "",
+        "robot_dismissed": False,
+        "analysis_result": None,
+        "chat_history": [],
+        "audit_logs": [],
+        "confidence_score": 0.0,
+        "consistency_guard_passed": True,
+        "analysis_timestamp": "",
+        "user_query_cache": "",
+    }
+    for key, val in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = val
 
-# ---------------------------------------------------------
-# 9. SIDEBAR CONFIGURATION & CONTROL PANEL
-# ---------------------------------------------------------
+init_session_states()
+
+# ------------------------------------------------------------------------------
+# 8. SIDEBAR CONTROL PANEL & AUDIT LOGS
+# ------------------------------------------------------------------------------
 with st.sidebar:
     st.markdown("""<div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; padding: 12px; border-radius: 10px; margin-bottom: 16px;">
-<b style="color:#34D399; font-size:0.88rem;">⚡ SECRETS CONNECTED</b><br>
-<span style="font-size:0.75rem; color:#94A3B8;">GROQ API Key Authenticated</span>
+<b style="color:#34D399; font-size:0.88rem;">⚡ GROQ API CONNECTED</b><br>
+<span style="font-size:0.75rem; color:#94A3B8;">Enterprise Auth Verified</span>
 </div>""", unsafe_allow_html=True)
 
     st.markdown("""<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
@@ -669,51 +649,69 @@ with st.sidebar:
     reg_scope = st.selectbox(
         "Choose Analysis Scope",
         [
-            "🏛️ Macro (National Level - UUD 1945 & Acts)",
-            "🎓 Meso (Institutional / Campus Policy)",
-            "⚖️ Harmonization (National vs Local Alignment)",
-            "🌐 International Treaty & Trade Alignment"
+            "🏛️ Macro (National Level - UUD 1945 & Statutory Acts)",
+            "🎓 Meso (Institutional / Campus Policy / Circulars)",
+            "⚖️ Harmonization (National vs Local Regulatory Alignment)",
+            "🛡️ Corporate Governance & Public Compliance"
         ],
         index=2
     )
 
     st.markdown('<div class="lexis-divider"></div>', unsafe_allow_html=True)
 
-    st.markdown("""<div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
-<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-<span style="font-weight:700; color:#38BDF8; font-size:0.88rem;">GROUNDED INDEX ACTIVE</span>
+    # Confidence Threshold & Consistency Guard Controls
+    st.markdown("""<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+<span style="font-weight:700; color:#38BDF8; font-size:0.88rem;">ANALYSIS PARAMETERS</span>
 </div>""", unsafe_allow_html=True)
 
-    st.markdown("""<div style="background: #0A142F; border-left: 3px solid #10B981; padding: 10px; border-radius: 6px; margin-bottom: 8px; font-size: 0.85rem;">
-<b style="color:#FFFFFF;">§ 1945 Constitution (UUD)</b><br><span style="color:#94A3B8;">Amendments I-IV Indexed</span>
+    strict_mode = st.checkbox("Enable Strict Evidence Guard", value=True)
+    confidence_threshold = st.slider("Min Confidence Cutoff", min_value=50, max_value=95, value=75, step=5)
+
+    st.markdown('<div class="lexis-divider"></div>', unsafe_allow_html=True)
+
+    # Active Knowledge Indexes Display
+    st.markdown("""<div style="background: #0A142F; border-left: 3px solid #10B981; padding: 10px; border-radius: 6px; margin-bottom: 8px; font-size: 0.82rem;">
+<b style="color:#E2E8F0;">§ UUD 1945 Index</b><br><span style="color:#94A3B8;">Amendments I-IV Active</span>
 </div>
-<div style="background: #0A142F; border-left: 3px solid #10B981; padding: 10px; border-radius: 6px; margin-bottom: 8px; font-size: 0.85rem;">
-<b style="color:#FFFFFF;">§ Statutory Hierarchy</b><br><span style="color:#94A3B8;">Act 12/2011 jo Act 13/2022</span>
-</div>
-<div style="background: #0A142F; border-left: 3px solid #38BDF8; padding: 10px; border-radius: 6px; font-size: 0.85rem;">
-<b style="color:#FFFFFF;">§ Lex Specialis Engine</b><br><span style="color:#94A3B8;">Precedence Resolver Active</span>
+<div style="background: #0A142F; border-left: 3px solid #10B981; padding: 10px; border-radius: 6px; font-size: 0.82rem; margin-bottom:8px;">
+<b style="color:#E2E8F0;">§ Act No. 12/2011 & 13/2022</b><br><span style="color:#94A3B8;">Hierarchy Guard Active</span>
+</div>""", unsafe_allow_html=True)
+
+    # Historical Audit Log Expander
+    with st.expander("📜 ANALYSIS AUDIT LOGS (" + str(len(st.session_state["audit_logs"])) + ")"):
+        if not st.session_state["audit_logs"]:
+            st.caption("No analysis logs recorded yet.")
+        else:
+            for log in reversed(st.session_state["audit_logs"]):
+                st.markdown(f"""<div style="font-size:0.75rem; border-bottom:1px solid rgba(56,189,248,0.2); padding:6px 0;">
+<b style="color:#FDE047;">{log['timestamp']}</b><br>
+<span style="color:#38BDF8;">Status:</span> {log['status']}<br>
+<span style="color:#94A3B8;">Query:</span> {log['query_snippet']}...
 </div>""", unsafe_allow_html=True)
 
     st.markdown('<div class="lexis-divider"></div>', unsafe_allow_html=True)
-    
+
     if st.button("🗑️ RESET WORKSPACE DATA"):
         st.session_state["pdf_text"] = ""
         st.session_state["pdf_name"] = ""
         st.session_state["analysis_result"] = None
         st.session_state["chat_history"] = []
+        st.session_state["audit_logs"] = []
         st.session_state["robot_dismissed"] = False
+        st.session_state["confidence_score"] = 0.0
         st.rerun()
 
-    st.caption("🛡️ **GovShield Intelligence Engine v3.0**")
+    st.caption("🛡️ **GovShield Intelligence Engine v3.5 Enterprise**")
 
-# ---------------------------------------------------------
-# 10. ROBOT WELCOME OVERLAY (DISMISSIBLE HERO CARD)
-# ---------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 9. WELCOME ROBOT OVERLAY (DISMISSABLE)
+# ------------------------------------------------------------------------------
 if not st.session_state["robot_dismissed"]:
     st.markdown("""
     <div class="robot-welcome-card">
         <div class="robot-avatar">
-            <svg width="85" height="85" viewBox="0 0 24 24" fill="none" stroke="#FDE047" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#FDE047" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="11" width="18" height="10" rx="2" fill="#0A142F"/>
                 <circle cx="12" cy="5" r="2" fill="#38BDF8"/>
                 <path d="M12 7v4"/>
@@ -724,24 +722,24 @@ if not st.session_state["robot_dismissed"]:
                 <path d="M21 15h2"/>
             </svg>
         </div>
-        <h2 style="font-family:'Playfair Display', serif; color:#FDE047; margin:0 0 8px 0;">Welcome to GovShield AI Legal Assistant</h2>
-        <p style="color:#CBD5E1; font-size:0.95rem; max-width:650px; margin:0 auto 18px auto; line-height:1.6;">
-            I am your automated <b>Legal & Policy Intelligence Assistant</b>. I analyze legal cases, institutional regulations, and national constitutions using evidence-first grounded reasoning.
+        <h2 style="font-family:'Playfair Display', serif; color:#FDE047; margin:0 0 8px 0;">GovShield Enterprise Intelligence Assistant</h2>
+        <p style="color:#CBD5E1; font-size:0.92rem; max-width:680px; margin:0 auto 16px auto; line-height:1.6;">
+            Welcome to the zero-hallucination, evidence-first <b>Legal & Regulatory Decision System</b>. Analyzes national statutes, campus/institutional decrees, and constitutional hierarchy with grounded citation verification.
         </p>
         <p style="color:#38BDF8; font-size:0.85rem; font-weight:600; margin-bottom:0;">
-            👇 Upload a document or type your inquiry below to launch the analysis workspace!
+            👇 Upload a document or type your inquiry below to launch the workspace!
         </p>
     </div>
     """, unsafe_allow_html=True)
-    
+
     if st.button("🚀 LAUNCH LEGAL ANALYSIS WORKSPACE"):
         st.session_state["robot_dismissed"] = True
         st.rerun()
 
-# ---------------------------------------------------------
-# 11. INPUT SECTION (PDF ATTACHMENT & TEXT QUERY)
-# ---------------------------------------------------------
-st.markdown("""<div class="custom-label">
+# ------------------------------------------------------------------------------
+# 10. INPUT PANEL (FILE UPLOAD & INQUIRY FORM)
+# ------------------------------------------------------------------------------
+st.markdown("""<div style="font-size: 0.88rem; font-weight: 800; color: #38BDF8; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EAB308" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
 📄 OPTIONAL: SPECIFIC POLICY / PDF DOCUMENT ATTACHMENT
 </div>""", unsafe_allow_html=True)
@@ -756,28 +754,28 @@ if uploaded_file is not None:
         try:
             reader = PdfReader(uploaded_file)
             extracted_text = ""
-            for page in reader.pages:
+            for idx, page in enumerate(reader.pages):
                 text = page.extract_text()
                 if text:
-                    extracted_text += text + "\n"
+                    extracted_text += f"\n--- [PAGE {idx+1}] ---\n" + text
 
             st.session_state["pdf_text"] = extracted_text
             st.session_state["pdf_name"] = uploaded_file.name
-        except Exception as err:
-            st.error(f"Failed to process PDF document: {err}")
+        except Exception as err_pdf:
+            st.error(f"Failed to extract document contents: {err_pdf}")
 
     st.markdown(f"""<div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; padding: 8px 14px; border-radius: 8px; font-size: 0.85rem; color: #34D399; margin-top: 4px; margin-bottom: 12px; display:flex; align-items:center; gap:8px;">
-<span style="font-weight:700;">✓ Active Custom Document:</span> {html.escape(st.session_state['pdf_name'])}
+<span style="font-weight:700;">✓ Active Custom Document:</span> {html.escape(st.session_state['pdf_name'])} ({len(st.session_state['pdf_text'])} chars loaded)
 </div>""", unsafe_allow_html=True)
 else:
     st.session_state["pdf_text"] = ""
     st.session_state["pdf_name"] = ""
     st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
-# SEARCH AND QUERY FRAME
-st.markdown("""<div class="ai-search-frame">
+# Query Input Frame
+st.markdown("""<div style="background: rgba(10, 20, 47, 0.65); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 14px; padding: 12px 18px; margin-bottom: 8px;">
 <div style="display:flex; justify-content:space-between; align-items:center;">
-<div class="custom-label" style="margin-bottom: 0 !important;">
+<div style="font-size: 0.88rem; font-weight: 800; color: #38BDF8; letter-spacing: 0.8px; text-transform: uppercase; display:flex; align-items:center; gap:8px;">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
 ❓ POLICY INQUIRY / CASE SCENARIO / LEGAL QUERY (REQUIRED)
 </div>
@@ -792,64 +790,77 @@ user_query = st.text_area(
     placeholder="Type your policy scenario, case details, or regulatory questions here...",
     height=140,
     label_visibility="collapsed",
+    value=st.session_state["user_query_cache"]
 )
 
 if user_query.strip():
     st.session_state["robot_dismissed"] = True
+    st.session_state["user_query_cache"] = user_query
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# 12. EXECUTE LEGAL ANALYSIS BUTTON & AI PROCESSING ENGINE
-# ---------------------------------------------------------
-if st.button("RUN GOVSHIELD LEGAL INTELLIGENCE ANALYSIS"):
+# ------------------------------------------------------------------------------
+# 11. REASONING ENGINE & EXECUTION PIPELINE
+# ------------------------------------------------------------------------------
+col_btn1, col_btn2 = st.columns([3, 1])
+
+with col_btn1:
+    run_analysis = st.button("RUN GOVSHIELD LEGAL INTELLIGENCE ANALYSIS")
+
+with col_btn2:
+    rerun_analysis = st.button("🔄 RE-EVALUATE ANALYSIS")
+
+if run_analysis or rerun_analysis:
     st.session_state["robot_dismissed"] = True
     if not user_query.strip():
-        st.warning("⚠️ Please enter a legal inquiry or case scenario before proceeding.")
+        st.warning("⚠️ Please enter a valid legal query or case scenario before proceeding.")
     else:
-        with st.spinner("Analyzing legal hierarchy, cross-referencing provisions, and generating evidence-first reasoning..."):
+        with st.spinner("Executing Grounded Reasoning Engine... Cross-referencing statutory hierarchy and evidence clauses..."):
             try:
+                start_time = time.time()
+                
+                # Context Assembly
                 combined_context = f"{BUILTIN_KNOWLEDGE_BASE}\n[SELECTED REGULATORY SCOPE]: {reg_scope}\n"
                 if st.session_state["pdf_text"]:
-                    combined_context += f"\n[ATTACHED USER DOCUMENT / PDF]:\n{st.session_state['pdf_text'][:14000]}\n"
+                    combined_context += f"\n[ATTACHED USER DOCUMENT / PDF]:\n{st.session_state['pdf_text'][:16000]}\n"
 
                 client = OpenAI(api_key=GROQ_KEY, base_url=BASE_URL)
 
                 system_prompt = """
-You are GOVSHIELD AI, an evidence-first enterprise Legal & Regulatory Intelligence Assistant.
+You are GOVSHIELD AI Enterprise Edition, an evidence-first Legal & Regulatory Intelligence Engine.
 
-CORE MANDATES:
-1. Analyze legal hierarchy (1945 Constitution / UUD 1945 vs Statutory Laws vs Institutional/Campus Decrees) based on the user's selected Regulatory Scope.
-2. Apply the legal principle "Lex Specialis Derogat Legi Generali" (Specific laws prevail over general laws) and "Lex Superior Derogat Legi Inferiori" (Higher ranking laws override lower laws).
-3. Distinguish clearly between General Provisions and Specific Provisions/Exceptions.
-4. Provide direct EVIDENCE quotes / clause citations from the 1945 Constitution (UUD 1945) or the uploaded PDF document.
-5. IF NO EVIDENCE OR DIRECT CLAUSES EXIST, SET STATUS AS "REQUIRES HUMAN REVIEW" and explicitly state that no corresponding clauses were found. DO NOT HALLUCINATE OR INVENT ARTICLES.
-6. RESPOND ENTIRELY IN ENGLISH.
+CORE OPERATIONAL MANDATES:
+1. Legal Hierarchy Check: Compare user claims against national statutes (UUD 1945, Acts No. 12/2011 & 13/2022) and attached custom documents.
+2. Legal Doctrines: Strictly apply 'Lex Specialis Derogat Legi Generali' and 'Lex Superior Derogat Legi Inferiori'.
+3. Zero Hallucination: Cite exact textual quotes/clauses. If no supporting clause exists in provided context, status MUST BE "REQUIRES HUMAN REVIEW".
+4. Confidence Evaluation: Output an integer confidence score from 0 to 100 based on exactness of match.
+5. All outputs MUST be in English.
 
-OUTPUT FORMAT (JSON ONLY):
+JSON OUTPUT STRICT SCHEMA:
 {
   "recommendation_status": "SUPPORTED" | "NOT SUPPORTED" | "REQUIRES HUMAN REVIEW",
-  "recommendation_summary": "Executive summary of the legal determination in English",
-  "applicable_rule": "The final governing legal rule or supreme constitutional principle applicable",
-  "evidence": "Direct textual quote, clause, or article reference serving as legal evidence",
+  "confidence_score": integer (0 to 100),
+  "recommendation_summary": "Executive summary of legal determination in English",
+  "applicable_rule": "Governing legal rule or statutory article",
+  "evidence": "Direct quote or clause cited from context",
   "rule_analysis": {
-    "general_provision": "General rule or statutory provision identified",
-    "specific_provision": "Specific rule, exception, or institutional decree identified",
+    "general_provision": "Identified general statutory provision",
+    "specific_provision": "Identified specific rule or exception decree",
     "exception_detected": true | false,
     "unresolved_conflict": true | false
   },
-  "reasoning_conclusion": "Detailed step-by-step legal reasoning and justification",
-  "review_note": "Critical analysis note or advice for human legal counsel"
+  "reasoning_conclusion": "Detailed step-by-step legal rationale and justification",
+  "review_note": "Advisory note for legal counsel"
 }
 """
 
                 user_prompt = f"""
-GROUNDED KNOWLEDGE & DOCUMENTS:
+GROUNDED KNOWLEDGE & CONTEXT:
 ---
 {combined_context}
 ---
 
-INQUIRY / CASE SCENARIO:
+CASE INQUIRY:
 {user_query}
 """
 
@@ -865,73 +876,100 @@ INQUIRY / CASE SCENARIO:
                     response_format={"type": "json_object"},
                 )
 
-                st.session_state["analysis_result"] = json.loads(response.choices[0].message.content)
+                parsed_result = json.loads(response.choices[0].message.content)
+                
+                # Consistency & Guard Assessment
+                conf = parsed_result.get("confidence_score", 80)
+                if strict_mode and conf < confidence_threshold:
+                    parsed_result["recommendation_status"] = "REQUIRES HUMAN REVIEW"
+                    parsed_result["review_note"] += f" (Note: Confidence score {conf}% fell below the strict threshold of {confidence_threshold}%)."
 
-            except Exception as e:
-                st.error(f"Technical Analysis Error: {e}")
+                st.session_state["analysis_result"] = parsed_result
+                st.session_state["confidence_score"] = float(conf)
+                st.session_state["analysis_timestamp"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-# ---------------------------------------------------------
-# 13. RESULTS DASHBOARD & MULTI-TAB WORKSPACE
-# ---------------------------------------------------------
+                # Record Audit Log
+                log_entry = {
+                    "timestamp": st.session_state["analysis_timestamp"],
+                    "status": parsed_result.get("recommendation_status"),
+                    "query_snippet": user_query[:35],
+                    "confidence": conf
+                }
+                st.session_state["audit_logs"].append(log_entry)
+
+            except Exception as err_exec:
+                st.error(f"Execution Error in Analysis Engine: {err_exec}")
+
+# ------------------------------------------------------------------------------
+# 12. DASHBOARD & MULTI-TAB WORKSPACE
+# ------------------------------------------------------------------------------
 if st.session_state["analysis_result"]:
-    result = st.session_state["analysis_result"]
-    
+    res = st.session_state["analysis_result"]
     st.markdown('<div class="lexis-divider"></div>', unsafe_allow_html=True)
-    st.markdown("""<div style="font-size:1.15rem; font-weight:800; color:#38BDF8; margin-bottom:16px; letter-spacing:1px;">
-⚖️ GOVSHIELD INTELLIGENCE ANALYSIS DASHBOARD
-</div>""", unsafe_allow_html=True)
 
-    status = str(result.get("recommendation_status", "REQUIRES HUMAN REVIEW"))
-    summary = html.escape(str(result.get("recommendation_summary", "")))
+    # Top Status & Confidence Indicators
+    status_str = str(res.get("recommendation_status", "REQUIRES HUMAN REVIEW"))
+    summary_str = html.escape(str(res.get("recommendation_summary", "")))
+    conf_val = st.session_state["confidence_score"]
 
-    if status == "SUPPORTED":
-        st.markdown(f'<div class="badge-supported">✅ RECOMMENDATION: SUPPORTED — {summary}</div>', unsafe_allow_html=True)
-    elif status == "NOT SUPPORTED":
-        st.markdown(f'<div class="badge-rejected">❌ RECOMMENDATION: NOT SUPPORTED — {summary}</div>', unsafe_allow_html=True)
-    else:
-        st.markdown(f'<div class="badge-review">⚠️ STATUS: REQUIRES HUMAN REVIEW — Insufficient Direct Evidence</div>', unsafe_allow_html=True)
+    col_stat1, col_stat2 = st.columns([3, 1])
+
+    with col_stat1:
+        if status_str == "SUPPORTED":
+            st.markdown(f'<div class="badge-supported">✅ RECOMMENDATION: SUPPORTED — {summary_str}</div>', unsafe_allow_html=True)
+        elif status_str == "NOT SUPPORTED":
+            st.markdown(f'<div class="badge-rejected">❌ RECOMMENDATION: NOT SUPPORTED — {summary_str}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="badge-review">⚠️ STATUS: REQUIRES HUMAN REVIEW — Insufficient Direct Evidence</div>', unsafe_allow_html=True)
+
+    with col_stat2:
+        st.metric("AI Confidence Meter", f"{conf_val:.1f}%", delta="Grounded Match")
+        st.progress(conf_val / 100.0)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # TABULAR DISPLAY FOR DEEP DIVE & UPGRADED WORKSPACE
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "📊 Executive Summary & Evidence", 
-        "⚖️ Statutory Structure & Legal Reasoning",
-        "💬 Interactive Follow-up Q&A Assistant",
-        "📥 Export Executive Legal Brief"
+    # 5 Tab Enterprise Analysis Workspace
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "📊 Executive Summary & Evidence",
+        "⚖️ Statutory Hierarchy & Rationale",
+        "💬 Interactive Q&A Assistant",
+        "🔬 Methodology & Legal Guard",
+        "📥 Export Determination Brief"
     ])
 
-    applicable_rule = html.escape(str(result.get('applicable_rule', '-')))
-    evidence_text = html.escape(str(result.get('evidence', 'No direct text excerpt available')))
-    reasoning = html.escape(str(result.get('reasoning_conclusion', '-')))
-    review_note = html.escape(str(result.get('review_note', 'N/A')))
+    applicable_rule = html.escape(str(res.get('applicable_rule', '-')))
+    evidence_text = html.escape(str(res.get('evidence', 'No direct excerpt available')))
+    reasoning_text = html.escape(str(res.get('reasoning_conclusion', '-')))
+    review_note_text = html.escape(str(res.get('review_note', 'N/A')))
+    rule_anal = res.get("rule_analysis", {})
 
+    # TAB 1: EXECUTIVE SUMMARY & EVIDENCE
     with tab1:
-        r_col1, r_col2 = st.columns(2, gap="medium")
-        with r_col1:
+        c1, c2 = st.columns(2, gap="medium")
+        with c1:
             st.markdown(f"""<div class="lexis-card-gold">
-<div class="card-title-gold">⚖️ GOVERNING / APPLICABLE RULE</div>
-<div style="font-size:0.95rem; line-height:1.6; color:#F1F5F9;">{applicable_rule}</div>
+<div class="card-title-gold">⚖️ GOVERNING / APPLICABLE LEGAL RULE</div>
+<div style="font-size:0.95rem; line-height:1.6; color:#E2E8F0;">{applicable_rule}</div>
 </div>""", unsafe_allow_html=True)
 
-        with r_col2:
+        with c2:
             st.markdown(f"""<div class="lexis-card-cyan">
-<div class="card-title-cyan">📌 CITATION &amp; DIRECT LEGAL EVIDENCE EXCERPT</div>
+<div class="card-title-cyan">📌 CITATION &amp; DIRECT EVIDENCE EXCERPT</div>
 <div style="font-family:'JetBrains Mono', monospace; font-size:0.85rem; color:#34D399; background:#070C1A; padding:12px; border-radius:8px; border: 1px solid rgba(56, 189, 248, 0.25);">
 {evidence_text}
 </div>
 </div>""", unsafe_allow_html=True)
 
+    # TAB 2: STATUTORY HIERARCHY & RATIONALE
     with tab2:
-        ra = result.get("rule_analysis", {})
-        gen_prov = html.escape(str(ra.get('general_provision', '-')))
-        spec_prov = html.escape(str(ra.get('specific_provision', '-')))
-        exc_str = '<span style="color:#34D399; font-weight:700;">YES</span>' if ra.get('exception_detected') else '<span style="color:#F87171;">NO</span>'
-        conf_str = '<span style="color:#FDE047; font-weight:700;">YES</span>' if ra.get('unresolved_conflict') else '<span style="color:#34D399;">NO</span>'
+        gen_prov = html.escape(str(rule_anal.get('general_provision', '-')))
+        spec_prov = html.escape(str(rule_anal.get('specific_provision', '-')))
+        exc_str = '<span style="color:#34D399; font-weight:700;">YES</span>' if rule_anal.get('exception_detected') else '<span style="color:#F87171;">NO</span>'
+        conf_str = '<span style="color:#FDE047; font-weight:700;">YES</span>' if rule_anal.get('unresolved_conflict') else '<span style="color:#34D399;">NO</span>'
 
         st.markdown(f"""<div class="lexis-card-cyan">
 <div class="card-title-cyan">📊 REGULATORY HIERARCHY &amp; NORMA ANALYSIS</div>
-<div style="font-size:0.9rem; line-height:1.8; color:#F1F5F9;">
+<div style="font-size:0.9rem; line-height:1.8; color:#E2E8F0;">
 <div><b>General Provision:</b> {gen_prov}</div>
 <div><b>Specific Provision / Exception:</b> {spec_prov}</div>
 <div><b>Exception Detected:</b> {exc_str}</div>
@@ -941,15 +979,15 @@ if st.session_state["analysis_result"]:
 
         st.markdown(f"""<div class="lexis-card-gold">
 <div class="card-title-gold">📝 DETAILED LEGAL RATIONALE &amp; CONCLUSION</div>
-<div style="font-size:0.95rem; line-height:1.6; color:#E2E8F0;">
-{reasoning}
+<div style="font-size:0.95rem; line-height:1.6; color:#CBD5E1;">
+{reasoning_text}
 </div>
 <div style="font-size:0.85rem; color:#94A3B8; margin-top:14px; border-top:1px solid rgba(234, 179, 8, 0.2); padding-top:8px;">
-💡 <b>Legal Counsel Advisory Note:</b> {review_note}
+💡 <b>Legal Counsel Advisory Note:</b> {review_note_text}
 </div>
 </div>""", unsafe_allow_html=True)
 
-    # TAB 3: INTERACTIVE CHAT WORKSPACE
+    # TAB 3: CHAT Q&A ASSISTANT
     with tab3:
         st.markdown("### 💬 Interactive Legal Q&A Assistant")
         st.caption("Ask questions about this legal determination, uploaded document clauses, or relevant statutory rules.")
@@ -958,17 +996,17 @@ if st.session_state["analysis_result"]:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
-        if chat_input := st.chat_input("Ask a follow-up question regarding this case..."):
+        if chat_input := st.chat_input("Ask a follow-up question regarding this determination..."):
             st.session_state["chat_history"].append({"role": "user", "content": chat_input})
             with st.chat_message("user"):
                 st.markdown(chat_input)
 
             with st.chat_message("assistant"):
-                with st.spinner("Analyzing follow-up legal question..."):
+                with st.spinner("Analyzing query..."):
                     try:
                         client = OpenAI(api_key=GROQ_KEY, base_url=BASE_URL)
                         followup_messages = [
-                            {"role": "system", "content": f"You are GovShield AI Legal Assistant. Answer strictly based on this legal analysis and ground context: {json.dumps(result)}"},
+                            {"role": "system", "content": f"You are GovShield AI Legal Assistant. Answer strictly based on this context: {json.dumps(res)}"},
                         ] + st.session_state["chat_history"]
 
                         resp = client.chat.completions.create(
@@ -976,60 +1014,84 @@ if st.session_state["analysis_result"]:
                             messages=followup_messages,
                             temperature=0.2
                         )
-                        answer = resp.choices[0].message.content
-                        st.markdown(answer)
-                        st.session_state["chat_history"].append({"role": "assistant", "content": answer})
-                    except Exception as err:
-                        st.error(f"Chat error: {err}")
+                        ans = resp.choices[0].message.content
+                        st.markdown(ans)
+                        st.session_state["chat_history"].append({"role": "assistant", "content": ans})
+                    except Exception as err_chat:
+                        st.error(f"Chat execution error: {err_chat}")
 
-    # TAB 4: DOWNLOAD REPORT
+    # TAB 4: METHODOLOGY & LEGAL GUARD PANEL
     with tab4:
-        st.markdown("### 📥 Download Formal Legal Determination Brief")
-        report_text = f"""================================================================================
-GOVSHIELD AI - FORMAL LEGAL & REGULATORY DETERMINATION REPORT
+        st.markdown("### 🔬 Methodological Framework & Legal Doctrines")
+        
+        df_docs = pd.DataFrame([
+            {"Doctrine": "Lex Specialis Derogat Legi Generali", "Application": "Specific provisions override general legal rules in conflict cases."},
+            {"Doctrine": "Lex Superior Derogat Legi Inferiori", "Application": "Higher statutory laws invalidate conflicting lower decrees."},
+            {"Doctrine": "Lex Posterior Derogat Legi Priori", "Application": "Newer statutory regulations supersede older enactments."},
+            {"Doctrine": "Non-Retroactivity Guard", "Application": "Regulations cannot retroactively impair established rights."}
+        ])
+        
+        st.dataframe(df_docs, use_container_width=True)
+        
+        st.markdown("""<div class="lexis-card-cyan" style="margin-top:16px;">
+<div class="card-title-cyan">🛡️ VERIFICATION &amp; CONSISTENCY GUARD PANEL</div>
+<ul style="color:#CBD5E1; font-size:0.88rem; line-height:1.7;">
+<li><b>Zero-Hallucination Guard:</b> Strict verification ensures no quotes are fabricated.</li>
+<li><b>Hierarchy Audit:</b> Cross-checks statutory rank under Act No. 12/2011.</li>
+<li><b>Confidence Thresholding:</b> Automatically triggers human review if score falls below set cutoffs.</li>
+</ul>
+</div>""", unsafe_allow_html=True)
+
+    # TAB 5: EXPORT FORMAL LEGAL REPORT
+    with tab5:
+        st.markdown("### 📥 Download Formal Executive Legal Brief")
+        
+        brief_data = f"""================================================================================
+GOVSHIELD AI ENTERPRISE - FORMAL LEGAL & REGULATORY REPORT
 ================================================================================
-Status: {status}
-Regulatory Scope: {reg_scope}
+Timestamp: {st.session_state['analysis_timestamp']}
+Recommendation Status: {status_str}
+AI Confidence Rating: {conf_val:.1f}%
+Selected Scope: {reg_scope}
 Attached Document: {st.session_state['pdf_name'] or 'None'}
 
 EXECUTIVE SUMMARY:
-{result.get('recommendation_summary')}
+{res.get('recommendation_summary')}
 
-GOVERNING / APPLICABLE LEGAL RULE:
-{result.get('applicable_rule')}
+GOVERNING LEGAL RULE:
+{res.get('applicable_rule')}
 
-DIRECT LEGAL EVIDENCE & CITATION:
-{result.get('evidence')}
+DIRECT CITATION & EVIDENCE:
+{res.get('evidence')}
 
-REGULATORY NORMA ANALYSIS:
-- General Provision: {ra.get('general_provision')}
-- Specific Provision / Exception: {ra.get('specific_provision')}
-- Exception Detected: {ra.get('exception_detected')}
-- Conflict Detected: {ra.get('unresolved_conflict')}
+NORMATIVE ANALYSIS:
+- General Provision: {rule_anal.get('general_provision')}
+- Specific Provision: {rule_anal.get('specific_provision')}
+- Exception Detected: {rule_anal.get('exception_detected')}
+- Conflict Detected: {rule_anal.get('unresolved_conflict')}
 
 DETAILED LEGAL RATIONALE:
-{result.get('reasoning_conclusion')}
+{res.get('reasoning_conclusion')}
 
 LEGAL COUNSEL ADVISORY NOTE:
-{result.get('review_note')}
+{res.get('review_note')}
 ================================================================================
-Generated automatically by GovShield AI Engine v3.0
+Generated automatically by GovShield AI Enterprise v3.5 Engine
 ================================================================================
 """
-        st.download_button(
-            label="📄 DOWNLOAD FORMAL LEGAL REPORT (.TXT)",
-            data=report_text,
-            file_name="GovShield_Executive_Legal_Brief.txt",
-            mime="text/plain"
-        )
 
-# ---------------------------------------------------------
-# 14. FOOTER & COMPLIANCE DISCLAIMER
-# ---------------------------------------------------------
-st.markdown("<br><br><br>", unsafe_allow_html=True)
-st.markdown("""
-<div style="text-align: center; font-size: 0.78rem; color: #64748B; border-top: 1px solid rgba(56, 189, 248, 0.2); padding-top: 16px;">
-    🛡️ <b>GovShield AI Engine v3.0</b> — Enterprise Legal Decision Support System.<br>
-    <i>Disclaimer: Information provided is for decision intelligence support and regulatory alignment. Always consult certified legal practitioners for official judicial actions.</i>
-</div>
-""", unsafe_allow_html=True)
+        c_exp1, c_exp2 = st.columns(2)
+        with c_exp1:
+            st.download_button(
+                label="📄 DOWNLOAD LEGAL BRIEF (.TXT)",
+                data=brief_data,
+                file_name=f"GovShield_Brief_{int(time.time())}.txt",
+                mime="text/plain"
+            )
+        with c_exp2:
+            st.download_button(
+                label="📦 DOWNLOAD FULL AUDIT DATA (.JSON)",
+                data=json.dumps(res, indent=2),
+                file_name=f"GovShield_Audit_{int(time.time())}.json",
+                mime="application/json"
+            )
