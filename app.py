@@ -30,16 +30,6 @@ except Exception as e:
 
 # =============================================================================
 # THEME PALETTE (single source of truth — no pure white anywhere)
-#   base        #05070F  #080C1C  #0A0F24
-#   panel       #0C1330  #0F1A3D  #121D44
-#   text hi     #E7ECF5  (near-white, never #FFFFFF)
-#   text mid    #B7C2D9
-#   text low    #7C89A8
-#   gold        #E8B33D  #F4CD6E  #B8860F
-#   cyan        #37B6E8  #7ED0F2  #1E6FA3
-#   emerald     #35C98C
-#   rose        #E5636B
-#   mono        #6FE3D6
 # =============================================================================
 st.markdown("""<style>
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Fraunces:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
@@ -205,13 +195,49 @@ div[data-testid="stFileUploaderDropzone"] { background-color: var(--panel-0) !im
 div[data-testid="stFileUploaderDropzoneInstructions"] span, div[data-testid="stFileUploaderDropzoneInstructions"] small { color: var(--text-mid) !important; }
 div[data-testid="stFileUploaderFile"] { background-color: var(--panel-1) !important; color: var(--text-hi) !important; border-radius:8px; }
 
-/* ---------- selectbox / dropdown ---------- */
-div[data-baseweb="select"] > div { background-color: var(--panel-0) !important; border:1.4px solid var(--line-cyan) !important; color: var(--text-hi) !important; border-radius:10px !important; }
-div[data-baseweb="select"] span { color: var(--text-hi) !important; }
-div[data-baseweb="popover"] { background-color: var(--panel-1) !important; }
-ul[data-testid="stSelectboxVirtualDropdown"] { background-color: var(--panel-1) !important; border:1px solid var(--line-cyan) !important; }
-ul[data-testid="stSelectboxVirtualDropdown"] li { background-color: var(--panel-1) !important; color: var(--text-hi) !important; }
-ul[data-testid="stSelectboxVirtualDropdown"] li:hover { background-color: var(--panel-2) !important; color: var(--gold-soft) !important; }
+/* ---------- selectbox / dropdown (PERBAIKAN TOTAL DI SINI) ---------- */
+div[data-baseweb="select"] > div {
+    background-color: var(--panel-0) !important;
+    border: 1.4px solid var(--line-cyan) !important;
+    color: var(--text-hi) !important;
+    border-radius: 10px !important;
+    min-height: 42px !important;
+}
+div[data-baseweb="select"] span { color: var(--text-hi) !important; font-size: 0.88rem !important; }
+
+/* Overriding seluruh popover/dropdown container bawaan BaseWeb Streamlit */
+div[data-baseweb="popover"], 
+div[data-baseweb="popover"] > div, 
+div[data-baseweb="menu"],
+ul[role="listbox"],
+ul[data-testid="stSelectboxVirtualDropdown"] {
+    background-color: var(--panel-1) !important;
+    border: 1px solid var(--line-cyan) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+    padding: 6px !important;
+}
+
+/* Opsi item di dalam dropdown */
+li[role="option"], 
+ul[data-testid="stSelectboxVirtualDropdown"] li {
+    background-color: var(--panel-1) !important;
+    color: var(--text-hi) !important;
+    border-radius: 6px !important;
+    padding: 8px 12px !important;
+    margin-bottom: 2px !important;
+    font-size: 0.85rem !important;
+    transition: all 0.15s ease-in-out !important;
+}
+
+/* Hover & Selected State */
+li[role="option"]:hover, 
+li[role="option"][aria-selected="true"],
+ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
+    background-color: var(--panel-2) !important;
+    color: var(--gold-soft) !important;
+}
+
 div[data-baseweb="tag"] { background-color: var(--cyan-deep) !important; color: var(--text-hi) !important; }
 
 /* ---------- buttons ---------- */
@@ -312,9 +338,6 @@ div[data-testid="stBottomBlockContainer"], div[data-testid="stBottom"] { backgro
 
 /* ---------- popover ---------- */
 div[data-testid="stPopover"] button { background-color: var(--panel-0) !important; color: var(--gold-soft) !important; border:1px solid var(--line-gold) !important; }
-ul[role="listbox"] { background-color: var(--panel-1) !important; }
-li[role="option"] { color: var(--text-hi) !important; }
-li[role="option"]:hover { background-color: var(--panel-2) !important; color: var(--gold-soft) !important; }
 
 /* ---------- caption ---------- */
 .stCaption, [data-testid="stCaptionContainer"] { color: var(--text-low) !important; }
